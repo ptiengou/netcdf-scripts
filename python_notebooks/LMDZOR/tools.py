@@ -116,14 +116,16 @@ def map_rel_diff_ave(ds1, ds2, var, in_vmin=None, in_vmax=None, in_cmap=emb, mul
     plt.title(var + ' relative difference (' + ds1.name + ' - ' + ds2.name + ' ; %)')
 
 def map_two_ds(ds1, ds2, var, in_vmin=None, in_vmax=None, in_cmap=reds, in_figsize=(9,6.5), hex=False, hex_center=False):
-    fig, axs = plt.subplots(1, 2, figsize=(12, 4), subplot_kw={'projection': ccrs.PlateCarree()})
+    fig, axs = plt.subplots(1, 2, figsize=(10, 4), subplot_kw={'projection': ccrs.PlateCarree()})
     fig.suptitle(var + ' ({})'.format(ds1[var].units))
     plotvar_1 = ds1[var].mean(dim='time')
     plotvar_2 = ds2[var].mean(dim='time')
     nice_map(plotvar_1, axs[0], in_cmap, in_vmin, in_vmax)
+    axs[0].set_title(ds1.name)
     if hex:
         plot_hexagon(axs[0], show_center=hex_center)
     nice_map(plotvar_2, axs[1], in_cmap, in_vmin, in_vmax)
+    axs[1].set_title(ds2.name)
     if hex:
         plot_hexagon(axs[1], show_center=hex_center)
 

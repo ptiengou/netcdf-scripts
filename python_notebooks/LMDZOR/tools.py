@@ -10,6 +10,41 @@ import matplotlib as mpl
 from matplotlib.colors import ListedColormap
 from scipy.stats import ttest_ind
 
+plt.rcParams.update(
+        {
+            'figure.facecolor': 'white',
+            'axes.facecolor': 'white',
+            'font.size': 12,
+            'figure.dpi': 72.0,
+            'xtick.direction': 'in',
+            'ytick.direction': 'in',
+            'xtick.major.size': 5.0,
+            'xtick.minor.size': 2.5,
+            'ytick.major.size': 5.0,
+            'ytick.minor.size': 2.5,
+            'xtick.minor.visible': True,
+            'ytick.minor.visible': True,
+            'axes.grid': True,
+            'axes.titlesize': 'larger',
+            'axes.labelsize': 'larger',
+            'grid.color': 'dimgray',
+            'grid.linestyle': '-',
+            'grid.alpha': 0.3,
+            'axes.prop_cycle': cycler(
+                color=[
+                    '#0C5DA5',
+                    '#FF9500',
+                    '#00B945',
+                    '#FF2C00',
+                    '#845B97',
+                    '#474747',
+                    '#9E9E9E',
+                ]
+            ) * cycler(alpha=[0.8]),
+            'scatter.marker': 'x',
+            'lines.linewidth': 1.0,
+        })
+
 emb = ListedColormap(mpl.colormaps['RdYlBu_r'](np.linspace(0, 1, 10)))
 myvir = ListedColormap(mpl.colormaps['viridis'](np.linspace(0, 1, 10)))
 reds = ListedColormap(mpl.colormaps['Reds'](np.linspace(0, 1, 10)))

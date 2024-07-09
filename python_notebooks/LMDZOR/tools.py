@@ -3,11 +3,12 @@ import netCDF4 as nc
 import xarray as xr
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib as mpl
+from matplotlib.colors import ListedColormap
+from matplotlib.path import Path
 from cycler import cycler
 import cartopy.crs as ccrs
 import cartopy
-import matplotlib as mpl
-from matplotlib.colors import ListedColormap
 from scipy.stats import ttest_ind
 
 plt.rcParams.update(
@@ -168,3 +169,41 @@ def plot_hexagon(ax, center_lon=-3.7, center_lat=40.43, sim_radius_km=825, nbp=4
     #Show center if appropriate
     if show_center:
         ax.plot(center_lon, center_lat, marker='.', color='red', markersize=8)
+
+#polygonal subdomain
+iberic_peninsula = {
+            1 : {'lon':-10.0    , 'lat':36.0 },
+            2 : {'lon':-10.0    , 'lat':44.0 },
+            3 : {'lon':-1.5     , 'lat':44.0 },
+            4 : {'lon':3.3      , 'lat':43.0 },
+            5 : {'lon':3.3      , 'lat':41.5 },
+            6 : {'lon':-2.0      , 'lat':36.0 },
+}
+
+def polygon_to_mask(ds, dict_polygon):
+    polygon = np.array([[point['lon'], point['lat']] for point in dict_polygon.values()])
+    polygon = np.vstack([polygon, polygon[0]])  # Close the polygon
+    # plt.plot(polygon[:, 0], polygon[:, 1], 'r-', linewidth=2, c='black')
+
+    # Create a Path object from the polygon
+    polygon_path = Path(polygon)
+
+    # Get the coordinates from the dataset
+    lons = ds['lon'].values
+    lats = ds['lat'].values
+
+    # Create a meshgrid of coordinates
+    lon_grid, lat_grid = np.meshgrid(lons, lats)
+
+    # Create a 2D array of coordinates
+    lon_lat_pairs = np.vstack((lon_grid.ravel(), lat_grid.ravel())).T
+
+    # Check which points are inside the polygon
+    inside_polygon = polygon_path.contains_points(lon_lat_pairs).reshape(lon_grid.shape)
+
+    # Convert the mask to a DataArray with the same coordinates as the dataset
+    inside_polygon_da = xr.DataArray(inside_polygon, dims=['lat', 'lon'], coords={'lat': ds['lat'], 'lon': ds['lon']})
+
+    # Create a dataset for the mask
+    mask_ds = xr.Dataset({'mask': inside_polygon_da})
+    return(mask_ds)

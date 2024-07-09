@@ -51,6 +51,7 @@ myvir = ListedColormap(mpl.colormaps['viridis'](np.linspace(0, 1, 10)))
 reds = ListedColormap(mpl.colormaps['Reds'](np.linspace(0, 1, 10)))
 greens = ListedColormap(mpl.colormaps['Greens'](np.linspace(0, 1, 10)))
 wet = ListedColormap(mpl.colormaps['YlGnBu'](np.linspace(0, 1, 10)))
+emb_neutral = ListedColormap(mpl.colormaps['BrBG'](np.linspace(0, 1, 10)))
 
 rivers = cartopy.feature.NaturalEarthFeature('physical', 'rivers_lake_centerlines', '10m',edgecolor=(0, 0, 0, 0.3), facecolor='none')
 
@@ -63,7 +64,9 @@ def nice_map(plotvar, in_ax, in_cmap=myvir, in_vmin=None, in_vmax=None):
     gl.top_labels = False
     gl.xlocator = plt.MaxNLocator(10)
     gl.ylocator = plt.MaxNLocator(9)
-    plotvar.plot(ax=in_ax, transform=ccrs.PlateCarree(), cmap=in_cmap, vmin=in_vmin, vmax=in_vmax)
+    plot_obj = plotvar.plot(ax=in_ax, transform=ccrs.PlateCarree(), cmap=in_cmap, vmin=in_vmin, vmax=in_vmax)
+    #remove legend on the cmap bar
+    plot_obj.colorbar.set_label('')
     plt.tight_layout()
 
 def map_plotvar(plotvar, in_vmin=None, in_vmax=None, in_cmap=myvir, in_figsize=(9,6.5), in_title=None, hex=False, hex_center=False):
@@ -116,8 +119,8 @@ def map_rel_diff_ave(ds1, ds2, var, in_vmin=None, in_vmax=None, in_cmap=emb, mul
         plot_hexagon(ax, show_center=hex_center)
     plt.title(var + ' relative difference (' + ds1.name + ' - ' + ds2.name + ' ; %)')
 
-def map_two_ds(ds1, ds2, var, in_vmin=None, in_vmax=None, in_cmap=reds, in_figsize=(9,6.5), hex=False, hex_center=False):
-    fig, axs = plt.subplots(1, 2, figsize=(10, 4), subplot_kw={'projection': ccrs.PlateCarree()})
+def map_two_ds(ds1, ds2, var, in_vmin=None, in_vmax=None, in_cmap=reds, in_figsize=(15,6), hex=False, hex_center=False):
+    fig, axs = plt.subplots(1, 2, figsize=in_figsize, subplot_kw={'projection': ccrs.PlateCarree()})
     fig.suptitle(var + ' ({})'.format(ds1[var].units))
     plotvar_1 = ds1[var].mean(dim='time')
     plotvar_2 = ds2[var].mean(dim='time')
@@ -129,6 +132,18 @@ def map_two_ds(ds1, ds2, var, in_vmin=None, in_vmax=None, in_cmap=reds, in_figsi
     axs[1].set_title(ds2.name)
     if hex:
         plot_hexagon(axs[1], show_center=hex_center)
+
+def map_seasons(plotvar, in_vmin=None, in_vmax=None, in_cmap=myvir, in_figsize=(12,9), hex=False, hex_center=False, in_title=None):
+    fig, axs = plt.subplots(2, 2, figsize=in_figsize, subplot_kw={'projection': ccrs.PlateCarree()})
+    fig.suptitle(in_title)
+    seasons = ['DJF', 'MAM', 'JJA', 'SON']
+    for i, season in enumerate(seasons):
+        plotvar_season = plotvar.where(plotvar['time.season']==season, drop=True)
+        nice_map(plotvar_season.mean(dim='time'), axs.flatten()[i], in_cmap, in_vmin, in_vmax)
+        axs.flatten()[i].set_title(season)
+        if hex:
+            plot_hexagon(axs.flatten()[i], show_center=hex_center)
+
 
 #hexagon
 def _destination_point(lon, lat, bearing, distance_km):

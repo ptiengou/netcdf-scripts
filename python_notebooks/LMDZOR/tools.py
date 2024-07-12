@@ -51,7 +51,7 @@ myvir = ListedColormap(mpl.colormaps['viridis'](np.linspace(0, 1, 10)))
 reds = ListedColormap(mpl.colormaps['Reds'](np.linspace(0, 1, 10)))
 greens = ListedColormap(mpl.colormaps['Greens'](np.linspace(0, 1, 10)))
 wet = ListedColormap(mpl.colormaps['YlGnBu'](np.linspace(0, 1, 10)))
-emb_neutral = ListedColormap(mpl.colormaps['BrBG'](np.linspace(0, 1, 10)))
+emb_neutral = ListedColormap(mpl.colormaps['BrBG_r'](np.linspace(0, 1, 16)))
 
 rivers = cartopy.feature.NaturalEarthFeature('physical', 'rivers_lake_centerlines', '10m',edgecolor=(0, 0, 0, 0.3), facecolor='none')
 
@@ -144,6 +144,91 @@ def map_seasons(plotvar, in_vmin=None, in_vmax=None, in_cmap=myvir, in_figsize=(
         if hex:
             plot_hexagon(axs.flatten()[i], show_center=hex_center)
 
+def map_wind(ds, height='10m', in_figsize=(9,6.5), in_cmap=reds, dist=6, in_scale=100, hex=False, hex_center=False):
+    fig = plt.figure(figsize=in_figsize)
+    ax = plt.axes(projection=ccrs.PlateCarree())
+    windvar_u=ds['u'+height].mean(dim='time')
+    windvar_v=ds['v'+height].mean(dim='time')
+    #show wind speed in background color
+    wind_speed = (windvar_u**2 + windvar_v**2 ) ** (1/2)
+    nice_map(wind_speed, ax, in_cmap=in_cmap)
+    if hex:
+        plot_hexagon(ax, show_center=hex_center)
+    #plot wind vectors
+    windx = windvar_u[::dist,::dist]
+    windy = windvar_v[::dist,::dist]
+    longi=ds['lon'][::dist]
+    lati=ds['lat'][::dist]
+    quiver = ax.quiver(longi, lati, windx, windy, transform=ccrs.PlateCarree(), scale=in_scale)
+
+    quiverkey_scale = in_scale/10
+    plt.quiverkey(quiver, X=0.95, Y=0.05, U=quiverkey_scale, label='{} m/s'.format(quiverkey_scale), labelpos='S')
+
+    if (height == '10m'):
+        plt.title('10m wind speed (m/s) and direction')
+    else :
+        plt.title('{} hPa wind speed (m/s) and direction'.format(height))
+
+def map_wind_diff(ds1, ds2, height='10m', in_figsize=(9,6.5), in_cmap=emb, dist=6, in_scale=100, hex=False, hex_center=False):
+    fig = plt.figure(figsize=in_figsize)
+    ax = plt.axes(projection=ccrs.PlateCarree())
+    windvar_u1=ds1['u'+height].mean(dim='time')
+    windvar_v1=ds1['v'+height].mean(dim='time')
+    windvar_u2=ds2['u'+height].mean(dim='time')
+    windvar_v2=ds2['v'+height].mean(dim='time')
+    #show wind speed in background color
+    wind_speed1 = (windvar_u1**2 + windvar_v1**2 ) ** (1/2)
+    wind_speed2 = (windvar_u2**2 + windvar_v2**2 ) ** (1/2)
+    wind_speed_diff = wind_speed1 - wind_speed2
+    nice_map(wind_speed_diff, ax, in_cmap=in_cmap)
+    if hex:
+        plot_hexagon(ax, show_center=hex_center)
+    #plot wind vectors
+    windx = (windvar_u1-windvar_u2)[::dist,::dist]
+    windy = (windvar_v1-windvar_v2)[::dist,::dist]
+    longi=ds1['lon'][::dist]
+    lati=ds1['lat'][::dist]
+    quiver = ax.quiver(longi, lati, windx, windy, transform=ccrs.PlateCarree(), scale=in_scale)
+
+    quiverkey_scale = in_scale/10
+    plt.quiverkey(quiver, X=0.95, Y=0.05, U=quiverkey_scale, label='{} m/s'.format(quiverkey_scale), labelpos='S')
+
+    if (height == '10m'):
+        plt.title('10m wind speed (m/s) and direction change ({} - {})'.format(ds1.name, ds2.name))
+    else :
+        plt.title('{} hPa wind speed (m/s) and direction change ({} - {})'.format(height, ds1.name, ds2.name))
+
+
+#time series
+def time_series(ds_list, var, in_figsize=(9, 5.5), year_min=2010, year_max=2022, in_title=None, in_ylabel=None, in_xlabel=None):
+    fig = plt.figure(figsize=in_figsize)
+    ax = plt.axes()
+    for ds in ds_list:
+        ds = ds.where(ds['time.year'] >= year_min, drop=True).where(ds['time.year'] <= year_max, drop=True)
+        ds[var].mean(dim=['lon', 'lat']).plot(ax=ax, label=ds.name)
+    ax.grid()
+    ax.set_title(in_title)
+    ax.set_ylabel(in_ylabel)
+    ax.set_xlabel(in_xlabel)
+    ax.legend()
+
+def seasonal_cycle(ds_list, var, in_figsize=(9, 5.5), year_min=2010, year_max=2022, in_title=None, in_ylabel=None, in_xlabel=None):
+    fig = plt.figure(figsize=in_figsize)
+    ax = plt.axes()
+    for ds in ds_list:
+        ds = ds.where(ds['time.year'] >= year_min, drop=True).where(ds['time.year'] <= year_max, drop=True)
+        mean=ds[var].mean(dim=['lon','lat', 'time']).values
+        print(ds.attrs['name'] + ' : %.2f' % mean + ' ({})'.format(ds[var].attrs['units']))
+        ds[var].mean(dim=['lon', 'lat']).groupby('time.month').mean(dim='time').plot(ax=ax, label=ds.name)
+    ax.grid()
+    ax.set_title(in_title)
+    ax.set_ylabel(in_ylabel)
+    ax.set_xlabel(in_xlabel)
+    ax.legend()
+
+    months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+    ax.set_xticks(np.arange(1,13))
+    ax.set_xticklabels(months)
 
 #hexagon
 def _destination_point(lon, lat, bearing, distance_km):
@@ -222,3 +307,41 @@ def polygon_to_mask(ds, dict_polygon):
     # Create a dataset for the mask
     mask_ds = xr.Dataset({'mask': inside_polygon_da})
     return(mask_ds)
+
+
+#vertical profiles
+#plot vertical profile from reference level variables
+def profile_reflevs(ds_list, var, in_figsize=(6,8), in_title=' vertical profile'):
+    fig = plt.figure(figsize=in_figsize)
+    ax = plt.axes()
+    ax.grid()
+    plt.gca().invert_yaxis()
+    ax.set_title(var + in_title)
+    ax.set_ylabel('Pressure (hPa)')
+    ax.set_xlabel(var + ' ({})'.format(ds_list[0][var+'500'].attrs['units']))
+    pressure=[200,500,700,850,1013]
+    for ds in ds_list:
+        var0 = ds[var+'2m'].mean(dim=['time', 'lon', 'lat'])
+        var200 = ds[var+'200'].mean(dim=['time', 'lon', 'lat'])
+        var500 = ds[var+'500'].mean(dim=['time', 'lon', 'lat'])
+        var700 = ds[var+'700'].mean(dim=['time', 'lon', 'lat'])
+        var850 = ds[var+'850'].mean(dim=['time', 'lon', 'lat'])
+        profile=[var200,var500,var700,var850,var0]
+        ax.plot(profile, pressure, label=ds.name) 
+    ax.legend()
+
+#plot a profile from variable with all pressure levels
+def profile_preslevs(ds_list, var, in_figsize=(6,8), preslevelmax=20, in_title=' vertical profile'):
+    fig = plt.figure(figsize=in_figsize)
+    ax = plt.axes()
+    ax.grid()
+    plt.gca().invert_yaxis()
+    ax.set_title(var + in_title)
+    ax.set_ylabel('Pressure (hPa)')
+    ax.set_xlabel(var + ' ({})'.format(ds_list[0][var].attrs['units']))
+    pressure=ds_list[0]['presnivs'][0:preslevelmax]/100 #select levels and convert from Pa to hPa
+    for ds in ds_list:
+        plotvar = ds[var].mean(dim=['time', 'lon', 'lat'])[0:preslevelmax]
+        ax.plot(plotvar, pressure, label=ds.name) 
+    ax.legend()
+                     

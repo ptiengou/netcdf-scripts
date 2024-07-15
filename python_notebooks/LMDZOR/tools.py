@@ -51,7 +51,7 @@ myvir = ListedColormap(mpl.colormaps['viridis'](np.linspace(0, 1, 10)))
 reds = ListedColormap(mpl.colormaps['Reds'](np.linspace(0, 1, 10)))
 greens = ListedColormap(mpl.colormaps['Greens'](np.linspace(0, 1, 10)))
 wet = ListedColormap(mpl.colormaps['YlGnBu'](np.linspace(0, 1, 10)))
-emb_neutral = ListedColormap(mpl.colormaps['BrBG_r'](np.linspace(0, 1, 16)))
+emb_neutral = ListedColormap(mpl.colormaps['BrBG'](np.linspace(0, 1, 16)))
 
 rivers = cartopy.feature.NaturalEarthFeature('physical', 'rivers_lake_centerlines', '10m',edgecolor=(0, 0, 0, 0.3), facecolor='none')
 
@@ -69,7 +69,7 @@ def nice_map(plotvar, in_ax, in_cmap=myvir, in_vmin=None, in_vmax=None):
     plot_obj.colorbar.set_label('')
     plt.tight_layout()
 
-def map_plotvar(plotvar, in_vmin=None, in_vmax=None, in_cmap=myvir, in_figsize=(9,6.5), in_title=None, hex=False, hex_center=False):
+def map_plotvar(plotvar, in_vmin=None, in_vmax=None, in_cmap=myvir, in_figsize=(8,5), in_title=None, hex=False, hex_center=False):
     fig = plt.figure(figsize=in_figsize)
     ax = plt.axes(projection=ccrs.PlateCarree())
     nice_map(plotvar, ax, in_cmap, in_vmin, in_vmax)
@@ -77,7 +77,7 @@ def map_plotvar(plotvar, in_vmin=None, in_vmax=None, in_cmap=myvir, in_figsize=(
         plot_hexagon(ax, show_center=hex_center)
     plt.title(in_title)
 
-def map_ave(ds, var, in_vmin=None, in_vmax=None, in_cmap=myvir, multiplier=1, in_figsize=(9,6.5), hex=False, hex_center=False):
+def map_ave(ds, var, in_vmin=None, in_vmax=None, in_cmap=myvir, multiplier=1, in_figsize=(8,5), hex=False, hex_center=False):
     fig = plt.figure(figsize=in_figsize)
     ax = plt.axes(projection=ccrs.PlateCarree())
     plotvar = ds[var].mean(dim='time') * multiplier
@@ -86,7 +86,7 @@ def map_ave(ds, var, in_vmin=None, in_vmax=None, in_cmap=myvir, multiplier=1, in
         plot_hexagon(ax, show_center=hex_center)
     plt.title(var + ' (' + ds[var].attrs['units'] + ')')
 
-def map_diff_ave(ds1, ds2, var, in_vmin=None, in_vmax=None, in_cmap=emb, in_figsize=(9,6.5), sig=False, hex=False, hex_center=False):
+def map_diff_ave(ds1, ds2, var, in_vmin=None, in_vmax=None, in_cmap=emb, in_figsize=(8,5), sig=False, hex=False, hex_center=False):
     fig = plt.figure(figsize=in_figsize)
     ax = plt.axes(projection=ccrs.PlateCarree())
     diff = (ds1[var]-ds2[var]).mean(dim='time')
@@ -109,7 +109,7 @@ def map_diff_ave(ds1, ds2, var, in_vmin=None, in_vmax=None, in_cmap=emb, in_figs
         plot_hexagon(ax, show_center=hex_center)
     plt.title(var + ' difference (' + ds1.name + ' - ' + ds2.name + ', ' + ds1[var].attrs['units'] + ')')
 
-def map_rel_diff_ave(ds1, ds2, var, in_vmin=None, in_vmax=None, in_cmap=emb, multiplier=1, in_figsize=(9,6.5), hex=False, hex_center=False):
+def map_rel_diff_ave(ds1, ds2, var, in_vmin=None, in_vmax=None, in_cmap=emb, multiplier=1, in_figsize=(8,5), hex=False, hex_center=False):
     fig = plt.figure(figsize=in_figsize)
     ax = plt.axes(projection=ccrs.PlateCarree())
     rel_diff = ((ds1[var]-ds2[var] + 1E-16) / (ds2[var] + 1E-16)).mean(dim='time') * 100
@@ -144,7 +144,7 @@ def map_seasons(plotvar, in_vmin=None, in_vmax=None, in_cmap=myvir, in_figsize=(
         if hex:
             plot_hexagon(axs.flatten()[i], show_center=hex_center)
 
-def map_wind(ds, height='10m', in_figsize=(9,6.5), in_cmap=reds, dist=6, in_scale=100, hex=False, hex_center=False):
+def map_wind(ds, height='10m', in_figsize=(8,5), in_cmap=reds, dist=6, in_scale=100, hex=False, hex_center=False):
     fig = plt.figure(figsize=in_figsize)
     ax = plt.axes(projection=ccrs.PlateCarree())
     windvar_u=ds['u'+height].mean(dim='time')
@@ -169,7 +169,7 @@ def map_wind(ds, height='10m', in_figsize=(9,6.5), in_cmap=reds, dist=6, in_scal
     else :
         plt.title('{} hPa wind speed (m/s) and direction'.format(height))
 
-def map_wind_diff(ds1, ds2, height='10m', in_figsize=(9,6.5), in_cmap=emb, dist=6, in_scale=100, hex=False, hex_center=False):
+def map_wind_diff(ds1, ds2, height='10m', in_figsize=(8,5), in_cmap=emb, dist=6, in_scale=100, hex=False, hex_center=False):
     fig = plt.figure(figsize=in_figsize)
     ax = plt.axes(projection=ccrs.PlateCarree())
     windvar_u1=ds1['u'+height].mean(dim='time')

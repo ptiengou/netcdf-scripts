@@ -53,12 +53,12 @@ greens = ListedColormap(mpl.colormaps['Greens'](np.linspace(0, 1, 10)))
 wet = ListedColormap(mpl.colormaps['YlGnBu'](np.linspace(0, 1, 10)))
 emb_neutral = ListedColormap(mpl.colormaps['BrBG'](np.linspace(0, 1, 16)))
 
-rivers = cartopy.feature.NaturalEarthFeature('physical', 'rivers_lake_centerlines', '10m',edgecolor=(0, 0, 0, 0.3), facecolor='none')
+#rivers = cartopy.feature.NaturalEarthFeature('physical', 'rivers_lake_centerlines', '10m',edgecolor=(0, 0, 0, 0.3), facecolor='none')
 
 #maps 
 def nice_map(plotvar, in_ax, in_cmap=myvir, in_vmin=None, in_vmax=None):
     in_ax.coastlines()
-    in_ax.add_feature(rivers)
+    #in_ax.add_feature(rivers)
     gl = in_ax.gridlines(draw_labels=True, dms=True, x_inline=False, y_inline=False, alpha=0.8)
     gl.right_labels = False
     gl.top_labels = False

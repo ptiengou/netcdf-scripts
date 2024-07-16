@@ -23,7 +23,7 @@ sim_irr.attrs['name'] = 'irr'
 
 print("Plotting winds in sim")
 #plot winds for both sims
-heights=['a', '850']
+heights=['850']
 ds_list=[sim_noirr, sim_irr]
 for ds in ds_list:
     for in_height in heights:

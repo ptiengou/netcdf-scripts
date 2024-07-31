@@ -144,16 +144,18 @@ def map_seasons(plotvar, in_vmin=None, in_vmax=None, in_cmap=myvir, in_figsize=(
         if hex:
             plot_hexagon(axs.flatten()[i], show_center=hex_center)
 
-def map_wind(ds, height='10m', in_figsize=(8,5), in_cmap=reds, dist=6, in_scale=100, hex=False, hex_center=False):
+def map_wind(ds, extra_var='wind speed', height='10m', in_figsize=(8,5), in_cmap=reds, dist=6, in_scale=100):
     fig = plt.figure(figsize=in_figsize)
     ax = plt.axes(projection=ccrs.PlateCarree())
     windvar_u=ds['u'+height].mean(dim='time')
     windvar_v=ds['v'+height].mean(dim='time')
-    #show wind speed in background color
-    wind_speed = (windvar_u**2 + windvar_v**2 ) ** (1/2)
-    nice_map(wind_speed, ax, in_cmap=in_cmap)
-    if hex:
-        plot_hexagon(ax, show_center=hex_center)
+    #show extra_var in background color
+    if extra_var=='wind speed':
+        plotvar = (windvar_u**2 + windvar_v**2 ) ** (1/2)
+    else:
+        plotvar = ds[extra_var].mean(dim='time')
+    nice_map(plotvar, ax, in_cmap=in_cmap)
+
     #plot wind vectors
     windx = windvar_u[::dist,::dist]
     windy = windvar_v[::dist,::dist]
@@ -165,9 +167,9 @@ def map_wind(ds, height='10m', in_figsize=(8,5), in_cmap=reds, dist=6, in_scale=
     plt.quiverkey(quiver, X=0.95, Y=0.05, U=quiverkey_scale, label='{} m/s'.format(quiverkey_scale), labelpos='S')
 
     if (height == '10m'):
-        plt.title('10m wind speed (m/s) and direction')
+        plt.title('10m wind (m/s) and {}'.format(extra_var))
     else :
-        plt.title('{} hPa wind speed (m/s) and direction'.format(height))
+        plt.title('{} hPa wind (m/s) and {}'.format(height, extra_var))
 
 def map_wind_diff(ds1, ds2, height='10m', in_figsize=(8,5), in_cmap=emb, dist=6, in_scale=100, hex=False, hex_center=False):
     fig = plt.figure(figsize=in_figsize)

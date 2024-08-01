@@ -8,7 +8,6 @@ from matplotlib.colors import ListedColormap
 from matplotlib.path import Path
 from cycler import cycler
 import cartopy.crs as ccrs
-import cartopy
 from scipy.stats import ttest_ind
 
 plt.rcParams.update(
@@ -55,7 +54,7 @@ emb_neutral = ListedColormap(mpl.colormaps['BrBG'](np.linspace(0, 1, 16)))
 
 #rivers = cartopy.feature.NaturalEarthFeature('physical', 'rivers_lake_centerlines', '10m',edgecolor=(0, 0, 0, 0.3), facecolor='none')
 
-#maps 
+### maps ###
 def nice_map(plotvar, in_ax, in_cmap=myvir, in_vmin=None, in_vmax=None):
     in_ax.coastlines()
     #in_ax.add_feature(rivers)
@@ -200,38 +199,6 @@ def map_wind_diff(ds1, ds2, height='10m', in_figsize=(8,5), in_cmap=emb, dist=6,
     else :
         plt.title('{} hPa wind speed (m/s) and direction change ({} - {})'.format(height, ds1.name, ds2.name))
 
-
-#time series
-def time_series(ds_list, var, in_figsize=(9, 5.5), year_min=2010, year_max=2022, in_title=None, in_ylabel=None, in_xlabel=None):
-    fig = plt.figure(figsize=in_figsize)
-    ax = plt.axes()
-    for ds in ds_list:
-        ds = ds.where(ds['time.year'] >= year_min, drop=True).where(ds['time.year'] <= year_max, drop=True)
-        ds[var].mean(dim=['lon', 'lat']).plot(ax=ax, label=ds.name)
-    ax.grid()
-    ax.set_title(in_title)
-    ax.set_ylabel(in_ylabel)
-    ax.set_xlabel(in_xlabel)
-    ax.legend()
-
-def seasonal_cycle(ds_list, var, in_figsize=(9, 5.5), year_min=2010, year_max=2022, in_title=None, in_ylabel=None, in_xlabel=None):
-    fig = plt.figure(figsize=in_figsize)
-    ax = plt.axes()
-    for ds in ds_list:
-        ds = ds.where(ds['time.year'] >= year_min, drop=True).where(ds['time.year'] <= year_max, drop=True)
-        mean=ds[var].mean(dim=['lon','lat', 'time']).values
-        print(ds.attrs['name'] + ' : %.2f' % mean + ' ({})'.format(ds[var].attrs['units']))
-        ds[var].mean(dim=['lon', 'lat']).groupby('time.month').mean(dim='time').plot(ax=ax, label=ds.name)
-    ax.grid()
-    ax.set_title(in_title)
-    ax.set_ylabel(in_ylabel)
-    ax.set_xlabel(in_xlabel)
-    ax.legend()
-
-    months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
-    ax.set_xticks(np.arange(1,13))
-    ax.set_xticklabels(months)
-
 #hexagon
 def _destination_point(lon, lat, bearing, distance_km):
     # function to calculate destination point given start point, bearing, and distance
@@ -311,7 +278,99 @@ def polygon_to_mask(ds, dict_polygon):
     return(mask_ds)
 
 
-#vertical profiles
+
+### time plots ###
+months_name_list=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+
+def nice_time_plot(plotvar, in_ax, in_label=None, in_title=None, in_ylabel=None, in_xlabel=None):
+    plotvar.plot(ax=in_ax, label=in_label)
+    in_ax.set_title(in_title)
+    in_ax.set_ylabel(in_ylabel)
+    in_ax.set_xlabel(in_xlabel)
+    in_ax.legend()
+    in_ax.grid()
+
+def time_series(ds_list, var, in_figsize=(9, 5.5), year_min=2010, year_max=2022, in_title=None, in_ylabel=None, in_xlabel=None):
+    fig = plt.figure(figsize=in_figsize)
+    ax = plt.axes()
+    ax.grid()
+    if not in_title:
+        in_title = var + (' ({})'.format(ds_list[0][var].attrs['units']))
+    for ds in ds_list:
+        plotvar=ds[var].where(ds['time.year'] >= year_min, drop=True).where(ds['time.year'] <= year_max, drop=True).mean(dim=['lon','lat'])
+        nice_time_plot(plotvar,ax,in_label=ds.name, in_title=in_title, in_ylabel=in_ylabel, in_xlabel=in_xlabel)
+
+def seasonal_cycle(ds_list, var, in_figsize=(9, 5.5), year_min=2010, year_max=2022, in_title=None, in_ylabel=None, in_xlabel=None):
+    fig = plt.figure(figsize=in_figsize)
+    ax = plt.axes()
+    if not in_title:
+        in_title = var + (' ({})'.format(ds_list[0][var].attrs['units']))
+    for ds in ds_list:
+        ds = ds.where(ds['time.year'] >= year_min, drop=True).where(ds['time.year'] <= year_max, drop=True)
+        mean=ds[var].mean(dim=['lon','lat', 'time']).values
+        print(ds.attrs['name'] + ' : %.2f' % mean + ' ({})'.format(ds[var].attrs['units']))
+        plotvar=ds[var].mean(dim=['lon', 'lat']).groupby('time.month').mean(dim='time')
+        nice_time_plot(plotvar,ax,in_label=ds.name, in_title=in_title, in_ylabel=in_ylabel, in_xlabel=in_xlabel)
+    ax.grid()
+    ax.set_xticks(np.arange(1,13))
+    ax.set_xticklabels(months_name_list)
+
+def discharge_coord_ts(ds_list, coord_dict, var='hydrographs', in_figsize=(20, 10), year_min=2010, year_max=2022, in_title=None, in_ylabel=None, in_xlabel=None):
+    ncols = len(coord_dict)//2
+    fig, axes = plt.subplots(2, ncols, figsize=in_figsize)
+    axes = axes.flatten()
+    
+    for i, (key, coord) in enumerate(coord_dict.items()):
+        ax=axes[i]
+        ax.grid()
+        lon = coord['lon_grid']
+        lat = coord['lat_grid']
+        name=coord['name']
+        year_min=coord['year_min']
+        year_max=coord['year_max']
+        # min_date='{}-01-01'.format(year_min)
+        # max_date='{}-12-31'.format(year_max)
+
+        for ds in ds_list:
+            plotvar=ds[var].where(ds['time.year'] >= year_min, drop=True).where(ds['time.year'] <= year_max, drop=True)
+            plotvar=plotvar.sel(lon=lon, lat=lat, method='nearest')
+            nice_time_plot(plotvar,ax,in_label=ds.name, in_title=name, in_ylabel=in_ylabel, in_xlabel=in_xlabel)
+    
+    if not in_title:
+        fig_title = var + (' time series ({})'.format(ds_list[0][var].attrs['units']))
+    fig.suptitle(fig_title)
+    plt.tight_layout()
+
+def discharge_coord_sc(ds_list, coord_dict, var='hydrographs', in_figsize=(20, 10), year_min=2010, year_max=2022, in_title=None, in_ylabel=None, in_xlabel=None):
+    ncols = len(coord_dict)//2
+    fig, axes = plt.subplots(2, ncols, figsize=in_figsize)
+    axes = axes.flatten()
+    
+    for i, (key, coord) in enumerate(coord_dict.items()):
+        ax=axes[i]
+        ax.grid()
+        ax.set_xticks(np.arange(1,13))
+        ax.set_xticklabels(months_name_list)
+        lon = coord['lon_grid']
+        lat = coord['lat_grid']
+        name=coord['name']
+        year_min=coord['year_min']
+        year_max=coord['year_max']
+        # min_date='{}-01-01'.format(year_min)
+        # max_date='{}-12-31'.format(year_max)
+
+        for ds in ds_list:
+            plotvar=ds[var].where(ds['time.year'] >= year_min, drop=True).where(ds['time.year'] <= year_max, drop=True)
+            plotvar=plotvar.sel(lon=lon, lat=lat, method='nearest').groupby('time.month').mean(dim='time')
+            nice_time_plot(plotvar,ax,in_label=ds.name, in_title=name, in_ylabel=in_ylabel, in_xlabel=in_xlabel)
+    
+    if not in_title:
+        fig_title = var + (' time series ({})'.format(ds_list[0][var].attrs['units']))
+    fig.suptitle(fig_title)
+    plt.tight_layout()
+
+### vertical profiles ###
+
 #plot vertical profile from reference level variables
 def profile_reflevs(ds_list, var, in_figsize=(6,8), in_title=' vertical profile'):
     fig = plt.figure(figsize=in_figsize)

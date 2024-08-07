@@ -1,4 +1,6 @@
 print("Importing tools")
+import sys
+sys.path.append('../python_tools/')
 from tools import *
 
 print("Loading netcdf files")

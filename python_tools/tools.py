@@ -8,6 +8,7 @@ from matplotlib.colors import ListedColormap
 from matplotlib.path import Path
 from cycler import cycler
 import cartopy.crs as ccrs
+import cartopy.feature as cfeature
 from scipy.stats import ttest_ind
 
 plt.rcParams.update(
@@ -46,47 +47,50 @@ plt.rcParams.update(
         })
 
 emb = ListedColormap(mpl.colormaps['RdYlBu_r'](np.linspace(0, 1, 10)))
+emb2 = ListedColormap(mpl.colormaps['seismic'](np.linspace(0, 1, 11)))
 myvir = ListedColormap(mpl.colormaps['viridis'](np.linspace(0, 1, 10)))
 reds = ListedColormap(mpl.colormaps['Reds'](np.linspace(0, 1, 10)))
 greens = ListedColormap(mpl.colormaps['Greens'](np.linspace(0, 1, 10)))
 wet = ListedColormap(mpl.colormaps['YlGnBu'](np.linspace(0, 1, 10)))
 emb_neutral = ListedColormap(mpl.colormaps['BrBG'](np.linspace(0, 1, 16)))
+bad_good=ListedColormap(mpl.colormaps['RdYlGn'](np.linspace(0, 1, 10)))
+good_bad=ListedColormap(mpl.colormaps['RdYlGn_r'](np.linspace(0, 1, 10)))
 
 #rivers = cartopy.feature.NaturalEarthFeature('physical', 'rivers_lake_centerlines', '10m',edgecolor=(0, 0, 0, 0.3), facecolor='none')
 
 ### maps ###
-def nice_map(plotvar, in_ax, in_cmap=myvir, in_vmin=None, in_vmax=None):
-    in_ax.coastlines()
-    #in_ax.add_feature(rivers)
-    gl = in_ax.gridlines(draw_labels=True, dms=True, x_inline=False, y_inline=False, alpha=0.8)
+def nice_map(plotvar, ax, cmap=myvir, vmin=None, vmax=None):
+    ax.coastlines()
+    #ax.add_feature(rivers)
+    gl = ax.gridlines(draw_labels=True, dms=True, x_inline=False, y_inline=False, alpha=0.8)
     gl.right_labels = False
     gl.top_labels = False
     gl.xlocator = plt.MaxNLocator(10)
     gl.ylocator = plt.MaxNLocator(9)
-    plot_obj = plotvar.plot(ax=in_ax, transform=ccrs.PlateCarree(), cmap=in_cmap, vmin=in_vmin, vmax=in_vmax)
+    plot_obj = plotvar.plot(ax=ax, transform=ccrs.PlateCarree(), cmap=cmap, vmin=vmin, vmax=vmax)
     #remove legend on the cmap bar
     plot_obj.colorbar.set_label('')
     plt.tight_layout()
 
-def map_plotvar(plotvar, in_vmin=None, in_vmax=None, in_cmap=myvir, in_figsize=(8,5), in_title=None, hex=False, hex_center=False):
-    fig = plt.figure(figsize=in_figsize)
+def map_plotvar(plotvar, vmin=None, vmax=None, cmap=myvir, figsize=(8,5), title=None, hex=False, hex_center=False):
+    fig = plt.figure(figsize=figsize)
     ax = plt.axes(projection=ccrs.PlateCarree())
-    nice_map(plotvar, ax, in_cmap, in_vmin, in_vmax)
+    nice_map(plotvar, ax, cmap, vmin, vmax)
     if hex:
         plot_hexagon(ax, show_center=hex_center)
-    plt.title(in_title)
+    plt.title(title)
 
-def map_ave(ds, var, in_vmin=None, in_vmax=None, in_cmap=myvir, multiplier=1, in_figsize=(8,5), hex=False, hex_center=False):
-    fig = plt.figure(figsize=in_figsize)
+def map_ave(ds, var, vmin=None, vmax=None, cmap=myvir, multiplier=1, figsize=(8,5), hex=False, hex_center=False):
+    fig = plt.figure(figsize=figsize)
     ax = plt.axes(projection=ccrs.PlateCarree())
     plotvar = ds[var].mean(dim='time') * multiplier
-    nice_map(plotvar, ax, in_cmap=in_cmap, in_vmin=in_vmin, in_vmax=in_vmax)
+    nice_map(plotvar, ax, cmap=cmap, vmin=vmin, vmax=vmax)
     if hex:
         plot_hexagon(ax, show_center=hex_center)
     plt.title(var + ' (' + ds[var].attrs['units'] + ')')
 
-def map_diff_ave(ds1, ds2, var, in_vmin=None, in_vmax=None, in_cmap=emb, in_figsize=(8,5), sig=False, hex=False, hex_center=False):
-    fig = plt.figure(figsize=in_figsize)
+def map_diff_ave(ds1, ds2, var, vmin=None, vmax=None, cmap=emb, figsize=(8,5), sig=False, hex=False, hex_center=False):
+    fig = plt.figure(figsize=figsize)
     ax = plt.axes(projection=ccrs.PlateCarree())
     diff = (ds1[var]-ds2[var]).mean(dim='time')
 
@@ -103,48 +107,48 @@ def map_diff_ave(ds1, ds2, var, in_vmin=None, in_vmax=None, in_cmap=emb, in_figs
         mask=p_values<0.05
         diff=diff.where(mask)
         
-    nice_map(diff, ax, in_cmap=in_cmap, in_vmin=in_vmin, in_vmax=in_vmax)
+    nice_map(diff, ax, cmap=cmap, vmin=vmin, vmax=vmax)
     if hex:
         plot_hexagon(ax, show_center=hex_center)
     plt.title(var + ' difference (' + ds1.name + ' - ' + ds2.name + ', ' + ds1[var].attrs['units'] + ')')
 
-def map_rel_diff_ave(ds1, ds2, var, in_vmin=None, in_vmax=None, in_cmap=emb, multiplier=1, in_figsize=(8,5), hex=False, hex_center=False):
-    fig = plt.figure(figsize=in_figsize)
+def map_rel_diff_ave(ds1, ds2, var, vmin=None, vmax=None, cmap=emb, multiplier=1, figsize=(8,5), hex=False, hex_center=False):
+    fig = plt.figure(figsize=figsize)
     ax = plt.axes(projection=ccrs.PlateCarree())
     rel_diff = ((ds1[var]-ds2[var] + 1E-16) / (ds2[var] + 1E-16)).mean(dim='time') * 100
 
-    nice_map(rel_diff, ax, in_cmap=in_cmap, in_vmin=in_vmin, in_vmax=in_vmax)
+    nice_map(rel_diff, ax, cmap=cmap, vmin=vmin, vmax=vmax)
     if hex:
         plot_hexagon(ax, show_center=hex_center)
     plt.title(var + ' relative difference (' + ds1.name + ' - ' + ds2.name + ' ; %)')
 
-def map_two_ds(ds1, ds2, var, in_vmin=None, in_vmax=None, in_cmap=reds, in_figsize=(15,6), hex=False, hex_center=False):
-    fig, axs = plt.subplots(1, 2, figsize=in_figsize, subplot_kw={'projection': ccrs.PlateCarree()})
+def map_two_ds(ds1, ds2, var, vmin=None, vmax=None, cmap=reds, figsize=(15,6), hex=False, hex_center=False):
+    fig, axs = plt.subplots(1, 2, figsize=figsize, subplot_kw={'projection': ccrs.PlateCarree()})
     fig.suptitle(var + ' ({})'.format(ds1[var].units))
     plotvar_1 = ds1[var].mean(dim='time')
     plotvar_2 = ds2[var].mean(dim='time')
-    nice_map(plotvar_1, axs[0], in_cmap, in_vmin, in_vmax)
+    nice_map(plotvar_1, axs[0], cmap, vmin, vmax)
     axs[0].set_title(ds1.name)
     if hex:
         plot_hexagon(axs[0], show_center=hex_center)
-    nice_map(plotvar_2, axs[1], in_cmap, in_vmin, in_vmax)
+    nice_map(plotvar_2, axs[1], cmap, vmin, vmax)
     axs[1].set_title(ds2.name)
     if hex:
         plot_hexagon(axs[1], show_center=hex_center)
 
-def map_seasons(plotvar, in_vmin=None, in_vmax=None, in_cmap=myvir, in_figsize=(12,9), hex=False, hex_center=False, in_title=None):
-    fig, axs = plt.subplots(2, 2, figsize=in_figsize, subplot_kw={'projection': ccrs.PlateCarree()})
-    fig.suptitle(in_title)
+def map_seasons(plotvar, vmin=None, vmax=None, cmap=myvir, figsize=(12,9), hex=False, hex_center=False, title=None):
+    fig, axs = plt.subplots(2, 2, figsize=figsize, subplot_kw={'projection': ccrs.PlateCarree()})
+    fig.suptitle(title)
     seasons = ['DJF', 'MAM', 'JJA', 'SON']
     for i, season in enumerate(seasons):
         plotvar_season = plotvar.where(plotvar['time.season']==season, drop=True)
-        nice_map(plotvar_season.mean(dim='time'), axs.flatten()[i], in_cmap, in_vmin, in_vmax)
+        nice_map(plotvar_season.mean(dim='time'), axs.flatten()[i], cmap, vmin, vmax)
         axs.flatten()[i].set_title(season)
         if hex:
             plot_hexagon(axs.flatten()[i], show_center=hex_center)
 
-def map_wind(ds, extra_var='wind speed', height='10m', in_figsize=(8,5), in_cmap=reds, dist=6, in_scale=100):
-    fig = plt.figure(figsize=in_figsize)
+def map_wind(ds, extra_var='wind speed', height='10m', figsize=(8,5), cmap=reds, dist=6, scale=100):
+    fig = plt.figure(figsize=figsize)
     ax = plt.axes(projection=ccrs.PlateCarree())
     windvar_u=ds['u'+height].mean(dim='time')
     windvar_v=ds['v'+height].mean(dim='time')
@@ -153,16 +157,16 @@ def map_wind(ds, extra_var='wind speed', height='10m', in_figsize=(8,5), in_cmap
         plotvar = (windvar_u**2 + windvar_v**2 ) ** (1/2)
     else:
         plotvar = ds[extra_var].mean(dim='time')
-    nice_map(plotvar, ax, in_cmap=in_cmap)
+    nice_map(plotvar, ax, cmap=cmap)
 
     #plot wind vectors
     windx = windvar_u[::dist,::dist]
     windy = windvar_v[::dist,::dist]
     longi=ds['lon'][::dist]
     lati=ds['lat'][::dist]
-    quiver = ax.quiver(longi, lati, windx, windy, transform=ccrs.PlateCarree(), scale=in_scale)
+    quiver = ax.quiver(longi, lati, windx, windy, transform=ccrs.PlateCarree(), scale=scale)
 
-    quiverkey_scale = in_scale/10
+    quiverkey_scale = scale/10
     plt.quiverkey(quiver, X=0.95, Y=0.05, U=quiverkey_scale, label='{} m/s'.format(quiverkey_scale), labelpos='S')
 
     if (height == '10m'):
@@ -170,8 +174,8 @@ def map_wind(ds, extra_var='wind speed', height='10m', in_figsize=(8,5), in_cmap
     else :
         plt.title('{} hPa wind (m/s) and {}'.format(height, extra_var))
 
-def map_wind_diff(ds1, ds2, height='10m', in_figsize=(8,5), in_cmap=emb, dist=6, in_scale=100, hex=False, hex_center=False):
-    fig = plt.figure(figsize=in_figsize)
+def map_wind_diff(ds1, ds2, height='10m', figsize=(8,5), cmap=emb, dist=6, scale=100, hex=False, hex_center=False):
+    fig = plt.figure(figsize=figsize)
     ax = plt.axes(projection=ccrs.PlateCarree())
     windvar_u1=ds1['u'+height].mean(dim='time')
     windvar_v1=ds1['v'+height].mean(dim='time')
@@ -181,7 +185,7 @@ def map_wind_diff(ds1, ds2, height='10m', in_figsize=(8,5), in_cmap=emb, dist=6,
     wind_speed1 = (windvar_u1**2 + windvar_v1**2 ) ** (1/2)
     wind_speed2 = (windvar_u2**2 + windvar_v2**2 ) ** (1/2)
     wind_speed_diff = wind_speed1 - wind_speed2
-    nice_map(wind_speed_diff, ax, in_cmap=in_cmap)
+    nice_map(wind_speed_diff, ax, cmap=cmap)
     if hex:
         plot_hexagon(ax, show_center=hex_center)
     #plot wind vectors
@@ -189,15 +193,25 @@ def map_wind_diff(ds1, ds2, height='10m', in_figsize=(8,5), in_cmap=emb, dist=6,
     windy = (windvar_v1-windvar_v2)[::dist,::dist]
     longi=ds1['lon'][::dist]
     lati=ds1['lat'][::dist]
-    quiver = ax.quiver(longi, lati, windx, windy, transform=ccrs.PlateCarree(), scale=in_scale)
+    quiver = ax.quiver(longi, lati, windx, windy, transform=ccrs.PlateCarree(), scale=scale)
 
-    quiverkey_scale = in_scale/10
+    quiverkey_scale = scale/10
     plt.quiverkey(quiver, X=0.95, Y=0.05, U=quiverkey_scale, label='{} m/s'.format(quiverkey_scale), labelpos='S')
 
     if (height == '10m'):
         plt.title('10m wind speed (m/s) and direction change ({} - {})'.format(ds1.name, ds2.name))
     else :
         plt.title('{} hPa wind speed (m/s) and direction change ({} - {})'.format(height, ds1.name, ds2.name))
+
+#restrict to square subdomain
+subdomain_spain={'lonmin':-9.5, 'lonmax':3.0, 'latmin':36.0, 'latmax':44.0}
+subdomain_ebro={'lonmin':-2.0, 'lonmax':1.0, 'latmin':41.0, 'latmax':43.0}
+
+def restrict_ds(ds, subdomain):
+    # ds = ds.sel(lon=slice(subdomain['lonmin'], subdomain['lonmax']), lat=slice(subdomain['latmin'], subdomain['latmax']))
+    ds = ds.where(ds['lon'] >= subdomain['lonmin'], drop=True).where(ds['lon'] <= subdomain['lonmax'], drop=True)
+    ds = ds.where(ds['lat'] >= subdomain['latmin'], drop=True).where(ds['lat'] <= subdomain['latmax'], drop=True)
+    return ds
 
 #hexagon
 def _destination_point(lon, lat, bearing, distance_km):
@@ -278,106 +292,62 @@ def polygon_to_mask(ds, dict_polygon):
     return(mask_ds)
 
 
-
 ### time plots ###
 months_name_list=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
 
-def nice_time_plot(plotvar, in_ax, in_label=None, in_title=None, in_ylabel=None, in_xlabel=None):
-    plotvar.plot(ax=in_ax, label=in_label)
-    in_ax.set_title(in_title)
-    in_ax.set_ylabel(in_ylabel)
-    in_ax.set_xlabel(in_xlabel)
-    in_ax.legend()
-    in_ax.grid()
+def nice_time_plot(plotvar, ax, label=None, title=None, ylabel=None, xlabel=None, color=None):
+    plotvar.plot(ax=ax, label=label, c=color)
+    ax.set_title(title)
+    ax.set_ylabel(ylabel)
+    ax.set_xlabel(xlabel)
+    ax.legend()
+    ax.grid()
 
-def time_series(ds_list, var, in_figsize=(9, 5.5), year_min=2010, year_max=2022, in_title=None, in_ylabel=None, in_xlabel=None):
-    fig = plt.figure(figsize=in_figsize)
+def time_series_ave(ds_list, var, figsize=(9, 5.5), year_min=2010, year_max=2022, title=None, ylabel=None, xlabel=None):
+    fig = plt.figure(figsize=figsize)
     ax = plt.axes()
     ax.grid()
-    if not in_title:
-        in_title = var + (' ({})'.format(ds_list[0][var].attrs['units']))
+    if not title:
+        title = var + (' ({})'.format(ds_list[0][var].attrs['units']))
     for ds in ds_list:
         plotvar=ds[var].where(ds['time.year'] >= year_min, drop=True).where(ds['time.year'] <= year_max, drop=True).mean(dim=['lon','lat'])
-        nice_time_plot(plotvar,ax,in_label=ds.name, in_title=in_title, in_ylabel=in_ylabel, in_xlabel=in_xlabel)
+        nice_time_plot(plotvar,ax,label=ds.name, title=title, ylabel=ylabel, xlabel=xlabel)
 
-def seasonal_cycle(ds_list, var, in_figsize=(9, 5.5), year_min=2010, year_max=2022, in_title=None, in_ylabel=None, in_xlabel=None):
-    fig = plt.figure(figsize=in_figsize)
+def time_series_lonlat(ds_list, var, lon, lat, figsize=(9, 5.5), year_min=2010, year_max=2022, title=None, ylabel=None, xlabel=None):
+    fig = plt.figure(figsize=figsize)
     ax = plt.axes()
-    if not in_title:
-        in_title = var + (' ({})'.format(ds_list[0][var].attrs['units']))
+    ax.grid()
+    if not title:
+        title = var + (' at ({}°N,{}°W) ({})'.format(lon,lat,ds_list[0][var].attrs['units']))
+    for ds in ds_list:
+        plotvar=ds[var].where(ds['time.year'] >= year_min, drop=True).where(ds['time.year'] <= year_max, drop=True)
+        plotvar=plotvar.sel(lon=lon, lat=lat, method='nearest')
+        nice_time_plot(plotvar,ax,label=ds.name, title=title, ylabel=ylabel, xlabel=xlabel)
+
+def seasonal_cycle_ave(ds_list, var, figsize=(9, 5.5), year_min=2010, year_max=2022, title=None, ylabel=None, xlabel=None):
+    fig = plt.figure(figsize=figsize)
+    ax = plt.axes()
+    if not title:
+        title = var + (' ({})'.format(ds_list[0][var].attrs['units']))
     for ds in ds_list:
         ds = ds.where(ds['time.year'] >= year_min, drop=True).where(ds['time.year'] <= year_max, drop=True)
         mean=ds[var].mean(dim=['lon','lat', 'time']).values
         print(ds.attrs['name'] + ' : %.2f' % mean + ' ({})'.format(ds[var].attrs['units']))
         plotvar=ds[var].mean(dim=['lon', 'lat']).groupby('time.month').mean(dim='time')
-        nice_time_plot(plotvar,ax,in_label=ds.name, in_title=in_title, in_ylabel=in_ylabel, in_xlabel=in_xlabel)
+        nice_time_plot(plotvar,ax,label=ds.name, title=title, ylabel=ylabel, xlabel=xlabel)
     ax.grid()
     ax.set_xticks(np.arange(1,13))
     ax.set_xticklabels(months_name_list)
 
-def discharge_coord_ts(ds_list, coord_dict, var='hydrographs', in_figsize=(20, 10), year_min=2010, year_max=2022, in_title=None, in_ylabel=None, in_xlabel=None):
-    ncols = len(coord_dict)//2
-    fig, axes = plt.subplots(2, ncols, figsize=in_figsize)
-    axes = axes.flatten()
-    
-    for i, (key, coord) in enumerate(coord_dict.items()):
-        ax=axes[i]
-        ax.grid()
-        lon = coord['lon_grid']
-        lat = coord['lat_grid']
-        name=coord['name']
-        year_min=coord['year_min']
-        year_max=coord['year_max']
-        # min_date='{}-01-01'.format(year_min)
-        # max_date='{}-12-31'.format(year_max)
-
-        for ds in ds_list:
-            plotvar=ds[var].where(ds['time.year'] >= year_min, drop=True).where(ds['time.year'] <= year_max, drop=True)
-            plotvar=plotvar.sel(lon=lon, lat=lat, method='nearest')
-            nice_time_plot(plotvar,ax,in_label=ds.name, in_title=name, in_ylabel=in_ylabel, in_xlabel=in_xlabel)
-    
-    if not in_title:
-        fig_title = var + (' time series ({})'.format(ds_list[0][var].attrs['units']))
-    fig.suptitle(fig_title)
-    plt.tight_layout()
-
-def discharge_coord_sc(ds_list, coord_dict, var='hydrographs', in_figsize=(20, 10), year_min=2010, year_max=2022, in_title=None, in_ylabel=None, in_xlabel=None):
-    ncols = len(coord_dict)//2
-    fig, axes = plt.subplots(2, ncols, figsize=in_figsize)
-    axes = axes.flatten()
-    
-    for i, (key, coord) in enumerate(coord_dict.items()):
-        ax=axes[i]
-        ax.grid()
-        ax.set_xticks(np.arange(1,13))
-        ax.set_xticklabels(months_name_list)
-        lon = coord['lon_grid']
-        lat = coord['lat_grid']
-        name=coord['name']
-        year_min=coord['year_min']
-        year_max=coord['year_max']
-        # min_date='{}-01-01'.format(year_min)
-        # max_date='{}-12-31'.format(year_max)
-
-        for ds in ds_list:
-            plotvar=ds[var].where(ds['time.year'] >= year_min, drop=True).where(ds['time.year'] <= year_max, drop=True)
-            plotvar=plotvar.sel(lon=lon, lat=lat, method='nearest').groupby('time.month').mean(dim='time')
-            nice_time_plot(plotvar,ax,in_label=ds.name, in_title=name, in_ylabel=in_ylabel, in_xlabel=in_xlabel)
-    
-    if not in_title:
-        fig_title = var + (' time series ({})'.format(ds_list[0][var].attrs['units']))
-    fig.suptitle(fig_title)
-    plt.tight_layout()
-
 ### vertical profiles ###
 
 #plot vertical profile from reference level variables
-def profile_reflevs(ds_list, var, in_figsize=(6,8), in_title=' vertical profile'):
-    fig = plt.figure(figsize=in_figsize)
+def profile_reflevs(ds_list, var, figsize=(6,8), title=' vertical profile'):
+    fig = plt.figure(figsize=figsize)
     ax = plt.axes()
     ax.grid()
     plt.gca().invert_yaxis()
-    ax.set_title(var + in_title)
+    ax.set_title(var + title)
     ax.set_ylabel('Pressure (hPa)')
     ax.set_xlabel(var + ' ({})'.format(ds_list[0][var+'500'].attrs['units']))
     pressure=[200,500,700,850,1013]
@@ -392,12 +362,12 @@ def profile_reflevs(ds_list, var, in_figsize=(6,8), in_title=' vertical profile'
     ax.legend()
 
 #plot a profile from variable with all pressure levels
-def profile_preslevs(ds_list, var, in_figsize=(6,8), preslevelmax=20, in_title=' vertical profile'):
-    fig = plt.figure(figsize=in_figsize)
+def profile_preslevs(ds_list, var, figsize=(6,8), preslevelmax=20, title=' vertical profile'):
+    fig = plt.figure(figsize=figsize)
     ax = plt.axes()
     ax.grid()
     plt.gca().invert_yaxis()
-    ax.set_title(var + in_title)
+    ax.set_title(var + title)
     ax.set_ylabel('Pressure (hPa)')
     ax.set_xlabel(var + ' ({})'.format(ds_list[0][var].attrs['units']))
     pressure=ds_list[0]['presnivs'][0:preslevelmax]/100 #select levels and convert from Pa to hPa

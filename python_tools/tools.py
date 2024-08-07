@@ -58,6 +58,67 @@ good_bad=ListedColormap(mpl.colormaps['RdYlGn_r'](np.linspace(0, 1, 10)))
 
 #rivers = cartopy.feature.NaturalEarthFeature('physical', 'rivers_lake_centerlines', '10m',edgecolor=(0, 0, 0, 0.3), facecolor='none')
 
+### Dataset manipulations ###
+
+#from full dataset to seasonnal ones
+def seasonnal_ds(ds, season):
+    ds_season = ds.where(ds['time.season']==season, drop=True)
+    ds_season.attrs['name'] = '{}_{}'.format(ds.attrs['name'], season)
+    return ds_season
+
+def seasonnal_ds_list(ds):
+    season_list = ['DJF', 'MAM', 'JJA', 'SON']
+    ds_list = [seasonnal_ds(ds, season) for season in season_list]
+    return ds_list
+
+#restrict to square subdomain
+subdomain_spain={'lonmin':-9.5, 'lonmax':3.0, 'latmin':36.0, 'latmax':44.0}
+subdomain_ebro={'lonmin':-2.0, 'lonmax':1.0, 'latmin':41.0, 'latmax':43.0}
+
+def restrict_ds(ds, subdomain):
+    # ds = ds.sel(lon=slice(subdomain['lonmin'], subdomain['lonmax']), lat=slice(subdomain['latmin'], subdomain['latmax']))
+    ds = ds.where(ds['lon'] >= subdomain['lonmin'], drop=True).where(ds['lon'] <= subdomain['lonmax'], drop=True)
+    ds = ds.where(ds['lat'] >= subdomain['latmin'], drop=True).where(ds['lat'] <= subdomain['latmax'], drop=True)
+    return ds
+
+#polygonal subdomain
+iberic_peninsula = {
+            1 : {'lon':-10.0    , 'lat':36.0 },
+            2 : {'lon':-10.0    , 'lat':44.0 },
+            3 : {'lon':-1.5     , 'lat':44.0 },
+            4 : {'lon':3.3      , 'lat':43.0 },
+            5 : {'lon':3.3      , 'lat':41.5 },
+            6 : {'lon':-2.0      , 'lat':36.0 },
+}
+
+def polygon_to_mask(ds, dict_polygon):
+    polygon = np.array([[point['lon'], point['lat']] for point in dict_polygon.values()])
+    polygon = np.vstack([polygon, polygon[0]])  # Close the polygon
+    # plt.plot(polygon[:, 0], polygon[:, 1], 'r-', linewidth=2, c='black')
+
+    # Create a Path object from the polygon
+    polygon_path = Path(polygon)
+
+    # Get the coordinates from the dataset
+    lons = ds['lon'].values
+    lats = ds['lat'].values
+
+    # Create a meshgrid of coordinates
+    lon_grid, lat_grid = np.meshgrid(lons, lats)
+
+    # Create a 2D array of coordinates
+    lon_lat_pairs = np.vstack((lon_grid.ravel(), lat_grid.ravel())).T
+
+    # Check which points are inside the polygon
+    inside_polygon = polygon_path.contains_points(lon_lat_pairs).reshape(lon_grid.shape)
+
+    # Convert the mask to a DataArray with the same coordinates as the dataset
+    inside_polygon_da = xr.DataArray(inside_polygon, dims=['lat', 'lon'], coords={'lat': ds['lat'], 'lon': ds['lon']})
+
+    # Create a dataset for the mask
+    mask_ds = xr.Dataset({'mask': inside_polygon_da})
+    return(mask_ds)
+
 ### maps ###
 def nice_map(plotvar, ax, cmap=myvir, vmin=None, vmax=None):
     ax.coastlines()
@@ -80,14 +141,17 @@ def map_plotvar(plotvar, vmin=None, vmax=None, cmap=myvir, figsize=(8,5), title=
         plot_hexagon(ax, show_center=hex_center)
     plt.title(title)
 
-def map_ave(ds, var, vmin=None, vmax=None, cmap=myvir, multiplier=1, figsize=(8,5), hex=False, hex_center=False):
+def map_ave(ds, var, vmin=None, vmax=None, cmap=myvir, multiplier=1, figsize=(8,5), hex=False, hex_center=False, title=None):
     fig = plt.figure(figsize=figsize)
     ax = plt.axes(projection=ccrs.PlateCarree())
     plotvar = ds[var].mean(dim='time') * multiplier
     nice_map(plotvar, ax, cmap=cmap, vmin=vmin, vmax=vmax)
     if hex:
         plot_hexagon(ax, show_center=hex_center)
-    plt.title(var + ' (' + ds[var].attrs['units'] + ')')
+    if title:
+        plt.title(title)
+    else:
+        plt.title(var + ' (' + ds[var].attrs['units'] + ')')
 
 def map_diff_ave(ds1, ds2, var, vmin=None, vmax=None, cmap=emb, figsize=(8,5), sig=False, hex=False, hex_center=False):
     fig = plt.figure(figsize=figsize)
@@ -203,15 +267,6 @@ def map_wind_diff(ds1, ds2, height='10m', figsize=(8,5), cmap=emb, dist=6, scale
     else :
         plt.title('{} hPa wind speed (m/s) and direction change ({} - {})'.format(height, ds1.name, ds2.name))
 
-#restrict to square subdomain
-subdomain_spain={'lonmin':-9.5, 'lonmax':3.0, 'latmin':36.0, 'latmax':44.0}
-subdomain_ebro={'lonmin':-2.0, 'lonmax':1.0, 'latmin':41.0, 'latmax':43.0}
-
-def restrict_ds(ds, subdomain):
-    # ds = ds.sel(lon=slice(subdomain['lonmin'], subdomain['lonmax']), lat=slice(subdomain['latmin'], subdomain['latmax']))
-    ds = ds.where(ds['lon'] >= subdomain['lonmin'], drop=True).where(ds['lon'] <= subdomain['lonmax'], drop=True)
-    ds = ds.where(ds['lat'] >= subdomain['latmin'], drop=True).where(ds['lat'] <= subdomain['latmax'], drop=True)
-    return ds
 
 #hexagon
 def _destination_point(lon, lat, bearing, distance_km):
@@ -252,44 +307,6 @@ def plot_hexagon(ax, center_lon=-3.7, center_lat=40.43, sim_radius_km=825, nbp=4
     #Show center if appropriate
     if show_center:
         ax.plot(center_lon, center_lat, marker='.', color='red', markersize=8)
-
-#polygonal subdomain
-iberic_peninsula = {
-            1 : {'lon':-10.0    , 'lat':36.0 },
-            2 : {'lon':-10.0    , 'lat':44.0 },
-            3 : {'lon':-1.5     , 'lat':44.0 },
-            4 : {'lon':3.3      , 'lat':43.0 },
-            5 : {'lon':3.3      , 'lat':41.5 },
-            6 : {'lon':-2.0      , 'lat':36.0 },
-}
-
-def polygon_to_mask(ds, dict_polygon):
-    polygon = np.array([[point['lon'], point['lat']] for point in dict_polygon.values()])
-    polygon = np.vstack([polygon, polygon[0]])  # Close the polygon
-    # plt.plot(polygon[:, 0], polygon[:, 1], 'r-', linewidth=2, c='black')
-
-    # Create a Path object from the polygon
-    polygon_path = Path(polygon)
-
-    # Get the coordinates from the dataset
-    lons = ds['lon'].values
-    lats = ds['lat'].values
-
-    # Create a meshgrid of coordinates
-    lon_grid, lat_grid = np.meshgrid(lons, lats)
-
-    # Create a 2D array of coordinates
-    lon_lat_pairs = np.vstack((lon_grid.ravel(), lat_grid.ravel())).T
-
-    # Check which points are inside the polygon
-    inside_polygon = polygon_path.contains_points(lon_lat_pairs).reshape(lon_grid.shape)
-
-    # Convert the mask to a DataArray with the same coordinates as the dataset
-    inside_polygon_da = xr.DataArray(inside_polygon, dims=['lat', 'lon'], coords={'lat': ds['lat'], 'lon': ds['lon']})
-
-    # Create a dataset for the mask
-    mask_ds = xr.Dataset({'mask': inside_polygon_da})
-    return(mask_ds)
 
 
 ### time plots ###

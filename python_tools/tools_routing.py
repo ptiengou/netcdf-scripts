@@ -289,7 +289,7 @@ def metric_nse(sim: xr.DataArray, obs: xr.DataArray) -> float:
     metric_nse.__max_value__= 1
 
     # Calculate the Nash-Sutcliffe Efficiency
-    nse = 1 - ((sim - obs)**2).sum(dim='time') / ((obs - obs.mean(dim='time'))**2).sum(dim='time')
+    nse = 1 - ( ((sim - obs)**2).sum(dim='time') / ((obs - obs.mean(dim='time'))**2).sum(dim='time') )
 
     return np.round(nse.values, 2)  # Extract the scalar value from the xarray object
 

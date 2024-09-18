@@ -50,42 +50,43 @@ plt.savefig(save_path, dpi=300)
 
 
 heights=['850']
-ds_list=[sim_noirr, sim_irr]
 
-print("Plotting winds")
-for ds in ds_list:
-    for height in heights:
-        print("Plotting for height {} in sim {}".format(height, ds.attrs['name']))
-        map_wind(ds, height=height, figsize=(15,8), cmap=reds, dist=6, scale=100, hex=False, hex_center=False)
-        print("Now saving figure")
-        save_path='{}/{}_wind_{}.png'.format(fig_save_dir, ds.attrs['name'], height)
-        plt.savefig(save_path, dpi=300)
-
-print("Plotting diff")
-for height in heights:
-    map_wind_diff(sim_irr,sim_noirr, height=height, figsize=(15,8), cmap=emb, dist=6, scale=10, hex=False, hex_center=False)
-    print("Now saving figure")
-    save_path='{}/wind_diff_{}.png'.format(fig_save_dir, height)
-    plt.savefig(save_path, dpi=300)
+# ds_list=[sim_noirr, sim_irr]
+# 
+# print("Plotting winds")
+# for ds in ds_list:
+#     for height in heights:
+#         print("Plotting for height {} in sim {}".format(height, ds.attrs['name']))
+#         map_wind(ds, height=height, figsize=(15,8), cmap=reds, dist=6, scale=100)
+#         print("Now saving figure")
+#         save_path='{}/{}_wind_{}.png'.format(fig_save_dir, ds.attrs['name'], height)
+#         plt.savefig(save_path, dpi=300)
+# 
+# print("Plotting diff")
+# for height in heights:
+#     map_wind_diff(sim_irr,sim_noirr, height=height, figsize=(15,8), cmap=emb, dist=6, scale=10)
+#     print("Now saving figure")
+#     save_path='{}/wind_diff_{}.png'.format(fig_save_dir, height)
+#     plt.savefig(save_path, dpi=300)
 
 print("Seasonnal plots")
 noirr_list = seasonnal_ds_list(sim_noirr)
 irr_list = seasonnal_ds_list(sim_irr)
-total_list = [noirr_list, irr_list]
-print("Plotting winds")
-for ds_list in total_list:
-    for ds in ds_list:
-        for height in heights:
-            print("Plotting for height {} in sim {}".format(height, ds.attrs['name']))
-            map_wind(ds, height=height, figsize=(15,8), cmap=reds, dist=6, scale=100, hex=False, hex_center=False)
-            print("Now saving figure")
-            save_path='{}/{}_wind_{}_seasonnal.png'.format(fig_save_dir, ds.attrs['name'], height)
-            plt.savefig(save_path, dpi=300)
+# total_list = [noirr_list, irr_list]
+# print("Plotting winds")
+# for ds_list in total_list:
+#     for ds in ds_list:
+#         for height in heights:
+#             print("Plotting for height {} in sim {}".format(height, ds.attrs['name']))
+#             map_wind(ds, height=height, figsize=(15,8), cmap=reds, dist=6, scale=100)
+#             print("Now saving figure")
+#             save_path='{}/{}_wind_{}_seasonnal.png'.format(fig_save_dir, ds.attrs['name'], height)
+#             plt.savefig(save_path, dpi=300)
 
 print("Plotting diff")
 for i in range(4):
     for height in heights:
-        map_wind_diff(irr_list[i],noirr_list[i], height=height, figsize=(15,8), cmap=emb, dist=6, scale=10, hex=False, hex_center=False)
+        map_wind_diff(irr_list[i],noirr_list[i], height=height, figsize=(15,8), cmap=emb, dist=6, scale=10)
         print("Now saving figure")
         save_path='{}/wind_diff_{}_seasonnal.png'.format(fig_save_dir, i)
         plt.savefig(save_path, dpi=300)

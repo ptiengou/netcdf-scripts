@@ -52,11 +52,11 @@ myvir = ListedColormap(mpl.colormaps['viridis'](np.linspace(0, 1, 10)))
 reds = ListedColormap(mpl.colormaps['Reds'](np.linspace(0, 1, 10)))
 greens = ListedColormap(mpl.colormaps['Greens'](np.linspace(0, 1, 10)))
 wet = ListedColormap(mpl.colormaps['YlGnBu'](np.linspace(0, 1, 10)))
-emb_neutral = ListedColormap(mpl.colormaps['BrBG'](np.linspace(0, 1, 16)))
+emb_neutral = ListedColormap(mpl.colormaps['BrBG'](np.linspace(0, 1, 10)))
 bad_good=ListedColormap(mpl.colormaps['RdYlGn'](np.linspace(0, 1, 10)))
 good_bad=ListedColormap(mpl.colormaps['RdYlGn_r'](np.linspace(0, 1, 10)))
 
-#rivers = cartopy.feature.NaturalEarthFeature('physical', 'rivers_lake_centerlines', '10m',edgecolor=(0, 0, 0, 0.3), facecolor='none')
+# rivers = cartopy.feature.NaturalEarthFeature('physical', 'rivers_lake_centerlines', '10m',edgecolor=(0, 0, 0, 0.3), facecolor='none')
 
 ### Dataset manipulations ###
 
@@ -122,7 +122,7 @@ def polygon_to_mask(ds, dict_polygon):
 ### maps ###
 def nice_map(plotvar, ax, cmap=myvir, vmin=None, vmax=None):
     ax.coastlines()
-    #ax.add_feature(rivers)
+    # ax.add_feature(rivers)
     gl = ax.gridlines(draw_labels=True, dms=True, x_inline=False, y_inline=False, alpha=0.8)
     gl.right_labels = False
     gl.top_labels = False
@@ -267,6 +267,29 @@ def map_wind_diff(ds1, ds2, height='10m', figsize=(8,5), cmap=emb, dist=6, scale
     else :
         plt.title('{} hPa wind speed (m/s) and direction change ({} - {})'.format(height, ds1.name, ds2.name))
 
+def map_moisture_transport(ds, extra_var='norm', figsize=(8,5), cmap=reds, dist=6, scale=100):
+    fig = plt.figure(figsize=figsize)
+    ax = plt.axes(projection=ccrs.PlateCarree())
+    windvar_u=ds['uq'].mean(dim='time')
+    windvar_v=ds['vq'].mean(dim='time')
+    #show extra_var in background color
+    if extra_var=='norm':
+        plotvar = (windvar_u**2 + windvar_v**2 ) ** (1/2)
+    else:
+        plotvar = ds[extra_var].mean(dim='time')
+    nice_map(plotvar, ax, cmap=cmap)
+
+    #plot wind vectors
+    windx = windvar_u[::dist,::dist]
+    windy = windvar_v[::dist,::dist]
+    longi=ds['lon'][::dist]
+    lati=ds['lat'][::dist]
+    quiver = ax.quiver(longi, lati, windx, windy, transform=ccrs.PlateCarree(), scale=scale)
+
+    quiverkey_scale = scale/10
+    plt.quiverkey(quiver, X=0.95, Y=0.05, U=quiverkey_scale, label='{} kg/m/s'.format(quiverkey_scale), labelpos='S')
+
+    plt.title('Moisture transport ({})'.format(extra_var))
 
 #hexagon
 def _destination_point(lon, lat, bearing, distance_km):
@@ -285,7 +308,8 @@ def _destination_point(lon, lat, bearing, distance_km):
     
     return np.degrees(lon2), np.degrees(lat2)
 
-def plot_hexagon(ax, center_lon=-3.7, center_lat=40.43, sim_radius_km=825, nbp=40, forced=5, nudged=8, show_center=False):
+# def plot_hexagon(ax, center_lon=-3.7, center_lat=40.43, sim_radius_km=825, nbp=40, forced=5, nudged=8, show_center=False):
+def plot_hexagon(ax, center_lon=-3.7, center_lat=40.43, sim_radius_km=1250, nbp=40, forced=5, nudged=8, show_center=False):
     no_influence_portion = (nbp - forced - nudged) / (nbp - forced)
     no_influence_radius_km = sim_radius_km * no_influence_portion
     # no_influence_radius_km = 850

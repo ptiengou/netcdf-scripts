@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 from matplotlib.colors import ListedColormap
 from matplotlib.path import Path
+import matplotlib.ticker as ticker
 from cycler import cycler
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
@@ -43,7 +44,7 @@ plt.rcParams.update(
                 ]
             ) * cycler(alpha=[0.8]),
             'scatter.marker': 'x',
-            'lines.linewidth': 1.0,
+            'lines.linewidth': 1.5,
         })
 
 emb = ListedColormap(mpl.colormaps['RdYlBu_r'](np.linspace(0, 1, 10)))
@@ -51,12 +52,13 @@ emb2 = ListedColormap(mpl.colormaps['seismic'](np.linspace(0, 1, 11)))
 myvir = ListedColormap(mpl.colormaps['viridis'](np.linspace(0, 1, 10)))
 reds = ListedColormap(mpl.colormaps['Reds'](np.linspace(0, 1, 10)))
 greens = ListedColormap(mpl.colormaps['Greens'](np.linspace(0, 1, 10)))
+blues = ListedColormap(mpl.colormaps['Blues'](np.linspace(0, 1, 10)))
 wet = ListedColormap(mpl.colormaps['YlGnBu'](np.linspace(0, 1, 10)))
 emb_neutral = ListedColormap(mpl.colormaps['BrBG'](np.linspace(0, 1, 10)))
 bad_good=ListedColormap(mpl.colormaps['RdYlGn'](np.linspace(0, 1, 10)))
 good_bad=ListedColormap(mpl.colormaps['RdYlGn_r'](np.linspace(0, 1, 10)))
 
-# rivers = cartopy.feature.NaturalEarthFeature('physical', 'rivers_lake_centerlines', '10m',edgecolor=(0, 0, 0, 0.3), facecolor='none')
+rivers = cfeature.NaturalEarthFeature('physical', 'rivers_lake_centerlines', '10m',edgecolor=(0, 0, 0, 0.3), facecolor='none')
 
 ### Dataset manipulations ###
 
@@ -91,6 +93,13 @@ iberic_peninsula = {
             6 : {'lon':-2.0      , 'lat':36.0 },
 }
 
+pyrenees = {
+            1 : {'lon':-2.0    , 'lat':43.5 },
+            2 : {'lon':3.0    , 'lat':43.5 },
+            3 : {'lon':3.0     , 'lat':42.2 },
+            4 : {'lon':-2.0      , 'lat':42.2 },
+}
+
 def polygon_to_mask(ds, dict_polygon):
     polygon = np.array([[point['lon'], point['lat']] for point in dict_polygon.values()])
     polygon = np.vstack([polygon, polygon[0]])  # Close the polygon
@@ -122,7 +131,7 @@ def polygon_to_mask(ds, dict_polygon):
 ### maps ###
 def nice_map(plotvar, ax, cmap=myvir, vmin=None, vmax=None):
     ax.coastlines()
-    # ax.add_feature(rivers)
+    ax.add_feature(rivers)
     gl = ax.gridlines(draw_labels=True, dms=True, x_inline=False, y_inline=False, alpha=0.8)
     gl.right_labels = False
     gl.top_labels = False
@@ -130,7 +139,21 @@ def nice_map(plotvar, ax, cmap=myvir, vmin=None, vmax=None):
     gl.ylocator = plt.MaxNLocator(9)
     plot_obj = plotvar.plot(ax=ax, transform=ccrs.PlateCarree(), cmap=cmap, vmin=vmin, vmax=vmax)
     #remove legend on the cmap bar
-    plot_obj.colorbar.set_label('')
+    cbar = plot_obj.colorbar
+    cbar.set_label('')
+    #choose the number of ticks and their values
+    ticks = np.linspace(vmin if vmin is not None else plotvar.min().values, 
+                        vmax if vmax is not None else plotvar.max().values, 
+                        11)  # Generate 11 evenly spaced ticks
+    cbar.set_ticks(ticks)
+    # Use ScalarFormatter to handle scientific notation
+    cbar.ax.yaxis.set_major_formatter(ticker.ScalarFormatter())
+    cbar.ax.yaxis.get_major_formatter().set_scientific(True)  # Enable scientific notation
+    cbar.ax.yaxis.get_major_formatter().set_powerlimits((-2, 3))  # Customize power limits for formatting
+
+    # Optionally, format the tick labels
+    # cbar.set_ticklabels([f'{t:.2g}' for t in ticks])
+
     plt.tight_layout()
 
 def map_plotvar(plotvar, vmin=None, vmax=None, cmap=myvir, figsize=(8,5), title=None, hex=False, hex_center=False):
@@ -153,7 +176,7 @@ def map_ave(ds, var, vmin=None, vmax=None, cmap=myvir, multiplier=1, figsize=(8,
     else:
         plt.title(var + ' (' + ds[var].attrs['units'] + ')')
 
-def map_diff_ave(ds1, ds2, var, vmin=None, vmax=None, cmap=emb, figsize=(8,5), sig=False, hex=False, hex_center=False):
+def map_diff_ave(ds1, ds2, var, vmin=None, vmax=None, cmap=emb, figsize=(8,5), sig=False, hex=False, hex_center=False, title=None):
     fig = plt.figure(figsize=figsize)
     ax = plt.axes(projection=ccrs.PlateCarree())
     diff = (ds1[var]-ds2[var]).mean(dim='time')
@@ -174,7 +197,10 @@ def map_diff_ave(ds1, ds2, var, vmin=None, vmax=None, cmap=emb, figsize=(8,5), s
     nice_map(diff, ax, cmap=cmap, vmin=vmin, vmax=vmax)
     if hex:
         plot_hexagon(ax, show_center=hex_center)
-    plt.title(var + ' difference (' + ds1.name + ' - ' + ds2.name + ', ' + ds1[var].attrs['units'] + ')')
+    if title:
+        plt.title(title)
+    else:
+        plt.title(var + ' difference (' + ds1.name + ' - ' + ds2.name + ', ' + ds1[var].attrs['units'] + ')')
 
 def map_rel_diff_ave(ds1, ds2, var, vmin=None, vmax=None, cmap=emb, multiplier=1, figsize=(8,5), hex=False, hex_center=False):
     fig = plt.figure(figsize=figsize)

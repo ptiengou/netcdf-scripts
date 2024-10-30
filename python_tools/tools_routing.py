@@ -415,7 +415,7 @@ def display_metric_map(sim_ds: xr.DataArray, obs_ds: xr.DataArray, stations_dict
         plt.scatter(station['lon_grid'], station['lat_grid'], label=station['name'], 
                     c=metric, cmap=cmap, 
                     vmin=metric_min, vmax=metric_max, 
-                    s=60,marker='o', 
+                    s=120,marker='o', 
                     edgecolors='black',  # Add black edges around markers
                     linewidths=0.5,  # Edge line width
                     )
@@ -427,6 +427,53 @@ def display_metric_map(sim_ds: xr.DataArray, obs_ds: xr.DataArray, stations_dict
     plt.colorbar(label='{}'.format(metric_func.__short_name__))
     if not title:
         plt.title('{}'.format(metric_func.__name__))
+    else:
+        plt.title(title)
+    #add legend outside of the plot
+    if legend:
+        plt.legend(loc='upper left', bbox_to_anchor=(1.2, 1))
+
+def display_metric_diff_map(sim1_ds: xr.DataArray, sim2_ds:xr.DataArray, obs_ds: xr.DataArray, stations_dict, metric_func, metric_min=None, metric_max=None, title=None, legend=False):
+    """
+    Calculate a metric for a given list of stations
+    Substract the metric values of sim2 from sim1
+    Display each station on a map with a color that corresponds to the metric value
+    The metric value scale is given by metric_min and metric_max
+    """
+    fig = plt.figure(figsize=(15, 9))
+    ax = plt.axes(projection=ccrs.PlateCarree())
+    ax.coastlines()
+    ax.add_feature(cfeature.RIVERS)
+    ax.set_extent([-10, 4, 35, 45])
+    gl = ax.gridlines(draw_labels=True, dms=True, x_inline=False, y_inline=False)
+    gl.ylocator = plt.MaxNLocator(5)
+    gl.right_labels = False
+    gl.top_labels = False
+    
+    for key, station in stations_dict.items():
+        metric1 = compute_metric_station(sim1_ds, obs_ds, key, station, metric_func)
+        metric2 = compute_metric_station(sim2_ds, obs_ds, key, station, metric_func)
+        metric = metric1 - metric2
+        cmap = metric_func.__colormap__
+        # if not metric_min:
+        #     metric_min = metric_func.__min_value__
+        # if not metric_max:
+        #     metric_max = metric_func.__max_value__
+        plt.scatter(station['lon_grid'], station['lat_grid'], label=station['name'], 
+                    c=metric, cmap=cmap, 
+                    vmin=metric_min, vmax=metric_max, 
+                    s=120,marker='o', 
+                    edgecolors='black',  # Add black edges around markers
+                    linewidths=0.5,  # Edge line width
+                    )
+    # plt.scatter([station['lon_grid'] for key, station in stations_dict.items()],
+    #             [station['lat_grid'] for key, station in stations_dict.items()],
+    #             label=[station['name'] for key, station in stations_dict.items()],
+    #             s=30, c=metric_values, cmap=cmap, vmin=metric_min, vmax=metric_max, marker='o')
+    
+    plt.colorbar(label='{} variation'.format(metric_func.__short_name__))
+    if not title:
+        plt.title('{} difference ({} - {})'.format(metric_func.__name__, sim1_ds.name, sim2_ds.name))
     else:
         plt.title(title)
     #add legend outside of the plot

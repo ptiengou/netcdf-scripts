@@ -11,6 +11,8 @@ from cycler import cycler
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 from scipy.stats import ttest_ind
+from scipy.interpolate import griddata
+
 
 plt.rcParams.update(
         {
@@ -82,6 +84,62 @@ def restrict_ds(ds, subdomain):
     ds = ds.where(ds['lon'] >= subdomain['lonmin'], drop=True).where(ds['lon'] <= subdomain['lonmax'], drop=True)
     ds = ds.where(ds['lat'] >= subdomain['latmin'], drop=True).where(ds['lat'] <= subdomain['latmax'], drop=True)
     return ds
+
+#regrid obs data for irrigation
+def regrid_to_lon_lat(ds, new_lon_res=500, new_lat_res=500):
+    """
+    Regrid irrigation data from X, Y coordinates to lon, lat coordinates, keeping the time dimension.
+    
+    Parameters:
+        ds (xarray.Dataset): The input dataset containing 'irrigation', 'lon', 'lat' variables.
+        new_lon_res (int): Resolution of the new longitude grid.
+        new_lat_res (int): Resolution of the new latitude grid.
+    
+    Returns:
+        xarray.Dataset: A new Dataset containing regridded 'irrigation' on lon/lat grid with time.
+    """
+    # Extract lon, lat, and irrigation
+    lon = ds['lon'].values  # Shape (X, Y)
+    lat = ds['lat'].values  # Shape (X, Y)
+    irrigation = ds['irrigation'].values  # Shape (time, X, Y)
+    time = ds['time'].values  # Time dimension
+
+    # Create a new regular lon/lat grid
+    lon_new = np.linspace(lon.min(), lon.max(), new_lon_res)
+    lat_new = np.linspace(lat.min(), lat.max(), new_lat_res)
+    lon_new_grid, lat_new_grid = np.meshgrid(lon_new, lat_new)
+
+    # Prepare an empty array for regridded irrigation data
+    irrigation_new = np.empty((len(time), new_lat_res, new_lon_res))
+
+    # Loop through each time step and interpolate
+    for t in range(len(time)):
+        irrigation_t = irrigation[t, :, :]  # Get the irrigation data at time t
+
+        # Flatten lon, lat, and irrigation_t for griddata
+        points = np.array([lon.flatten(), lat.flatten()]).T
+        values = irrigation_t.flatten()
+
+        # Interpolate to the new lon/lat grid
+        irrigation_new_t = griddata(points, values, (lon_new_grid, lat_new_grid), method='linear')
+
+        # Store the interpolated values in the new array
+        irrigation_new[t, :, :] = irrigation_new_t
+
+    # Step 1: Create a DataArray with time, lat, and lon coordinates
+    irrigation_da = xr.DataArray(
+        data=irrigation_new, 
+        dims=['time', 'lat', 'lon'],  # Keep time, lat, and lon dimensions
+        coords={'time': time, 'lat': lat_new, 'lon': lon_new},
+        name='irrigation'
+    )
+
+    # Step 2: Create a Dataset with the DataArray as a single variable
+    irrigation_ds = xr.Dataset({'irrigation': irrigation_da})
+
+    return irrigation_ds
+
+
 
 #polygonal subdomain
 iberic_peninsula = {

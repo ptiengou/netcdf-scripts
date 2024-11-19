@@ -11,6 +11,7 @@ from cycler import cycler
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 from scipy.stats import ttest_ind
+from scipy.stats import linregress
 from scipy.interpolate import griddata
 
 
@@ -49,16 +50,33 @@ plt.rcParams.update(
             'lines.linewidth': 1.5,
         })
 
+def make_cmap_white(cmap, nbins=10):
+    colors = plt.get_cmap(cmap, nbins)(np.linspace(0, 1, nbins))
+    colors[0] = [1, 1, 1, 1]  # RGBA for white
+    cmapW = ListedColormap(colors[:nbins])
+    return cmapW
+def add_central_white_cmap(cmap, nbins=11):
+    colors = plt.get_cmap(cmap, nbins)(np.linspace(0, 1, nbins))
+    colors[5] = [1, 1, 1, 1]  # RGBA for white
+    cmapW = ListedColormap(colors[:nbins])
+    return cmapW
+
 emb = ListedColormap(mpl.colormaps['RdYlBu_r'](np.linspace(0, 1, 10)))
 emb2 = ListedColormap(mpl.colormaps['seismic'](np.linspace(0, 1, 11)))
+emb_neutral = ListedColormap(mpl.colormaps['BrBG'](np.linspace(0, 1, 10)))
 myvir = ListedColormap(mpl.colormaps['viridis'](np.linspace(0, 1, 10)))
 reds = ListedColormap(mpl.colormaps['Reds'](np.linspace(0, 1, 10)))
+redsW = make_cmap_white('Reds', 10)
 greens = ListedColormap(mpl.colormaps['Greens'](np.linspace(0, 1, 10)))
+greensW = make_cmap_white('Greens', 10)
 blues = ListedColormap(mpl.colormaps['Blues'](np.linspace(0, 1, 10)))
+bluesW = make_cmap_white('Blues', 10)
 wet = ListedColormap(mpl.colormaps['YlGnBu'](np.linspace(0, 1, 10)))
-emb_neutral = ListedColormap(mpl.colormaps['BrBG'](np.linspace(0, 1, 10)))
+wetW = make_cmap_white('YlGnBu', 10)
 bad_good=ListedColormap(mpl.colormaps['RdYlGn'](np.linspace(0, 1, 10)))
 good_bad=ListedColormap(mpl.colormaps['RdYlGn_r'](np.linspace(0, 1, 10)))
+good_badW=add_central_white_cmap('RdYlGn_r', 11)
+bad_goodW=add_central_white_cmap('RdYlGn', 11)
 
 rivers = cfeature.NaturalEarthFeature('physical', 'rivers_lake_centerlines', '10m',edgecolor=(0, 0, 0, 0.3), facecolor='none')
 
@@ -142,11 +160,11 @@ def regrid_to_lon_lat(ds, new_lon_res=500, new_lat_res=500):
 
 
 #polygonal subdomain
-iberic_peninsula = {
+iberian_peninsula = {
             1 : {'lon':-10.0    , 'lat':36.0 },
             2 : {'lon':-10.0    , 'lat':44.0 },
-            3 : {'lon':-1.5     , 'lat':44.0 },
-            4 : {'lon':3.3      , 'lat':43.0 },
+            3 : {'lon':-2.0     , 'lat':43.3 },
+            4 : {'lon':3.3      , 'lat':42.8 },
             5 : {'lon':3.3      , 'lat':41.5 },
             6 : {'lon':-2.0      , 'lat':36.0 },
 }
@@ -156,6 +174,13 @@ pyrenees = {
             2 : {'lon':3.0    , 'lat':43.5 },
             3 : {'lon':3.0     , 'lat':42.2 },
             4 : {'lon':-2.0      , 'lat':42.2 },
+}
+
+ebro = {
+            1 : {'lon':-2.0    , 'lat':42.5 },
+            2 : {'lon':1.2    , 'lat':42.5 },
+            3 : {'lon':1.2     , 'lat':41 },
+            4 : {'lon':-2.0      , 'lat':41 },
 }
 
 def polygon_to_mask(ds, dict_polygon):
@@ -186,8 +211,13 @@ def polygon_to_mask(ds, dict_polygon):
     mask_ds = xr.Dataset({'mask': inside_polygon_da})
     return(mask_ds)
 
+def plot_polygon(dict_polygon, ax):
+    polygon = np.array([[point['lon'], point['lat']] for point in dict_polygon.values()])
+    polygon = np.vstack([polygon, polygon[0]])  # Close the polygon
+    ax.plot(polygon[:, 0], polygon[:, 1], 'r-', linewidth=2, c='red')
+
 ### maps ###
-def nice_map(plotvar, ax, cmap=myvir, vmin=None, vmax=None):
+def nice_map(plotvar, ax, cmap=myvir, vmin=None, vmax=None, poly=None):
     ax.coastlines()
     ax.add_feature(rivers)
     gl = ax.gridlines(draw_labels=True, dms=True, x_inline=False, y_inline=False, alpha=0.8)
@@ -211,6 +241,8 @@ def nice_map(plotvar, ax, cmap=myvir, vmin=None, vmax=None):
 
     # Optionally, format the tick labels
     # cbar.set_ticklabels([f'{t:.2g}' for t in ticks])
+    if poly:
+        plot_polygon(poly, ax)
 
     plt.tight_layout()
 
@@ -222,17 +254,18 @@ def map_plotvar(plotvar, vmin=None, vmax=None, cmap=myvir, figsize=(8,5), title=
         plot_hexagon(ax, show_center=hex_center)
     plt.title(title)
 
-def map_ave(ds, var, vmin=None, vmax=None, cmap=myvir, multiplier=1, figsize=(8,5), hex=False, hex_center=False, title=None):
+def map_ave(ds, var, vmin=None, vmax=None, cmap=myvir, multiplier=1, figsize=(8,5), hex=False, hex_center=False, title=None, poly=None):
     fig = plt.figure(figsize=figsize)
     ax = plt.axes(projection=ccrs.PlateCarree())
     plotvar = ds[var].mean(dim='time') * multiplier
-    nice_map(plotvar, ax, cmap=cmap, vmin=vmin, vmax=vmax)
+    nice_map(plotvar, ax, cmap=cmap, vmin=vmin, vmax=vmax, poly=poly)
     if hex:
         plot_hexagon(ax, show_center=hex_center)
     if title:
         plt.title(title)
     else:
-        plt.title(var + ' (' + ds[var].attrs['units'] + ')')
+        # plt.title(var + ' (' + ds[var].attrs['units'] + ')')
+        plt.title(ds[var].attrs['long_name'] + ' (' + ds[var].attrs['units'] + ')')
 
 def map_diff_ave(ds1, ds2, var, vmin=None, vmax=None, cmap=emb, figsize=(8,5), sig=False, hex=False, hex_center=False, title=None):
     fig = plt.figure(figsize=figsize)
@@ -428,7 +461,7 @@ def nice_time_plot(plotvar, ax, label=None, title=None, ylabel=None, xlabel=None
     ax.legend()
     ax.grid()
 
-def time_series_ave(ds_list, var, figsize=(9, 5.5), year_min=2010, year_max=2022, title=None, ylabel=None, xlabel=None):
+def time_series_ave(ds_list, var, figsize=(8.5, 5), year_min=2010, year_max=2022, title=None, ylabel=None, xlabel=None):
     fig = plt.figure(figsize=figsize)
     ax = plt.axes()
     ax.grid()
@@ -438,7 +471,7 @@ def time_series_ave(ds_list, var, figsize=(9, 5.5), year_min=2010, year_max=2022
         plotvar=ds[var].where(ds['time.year'] >= year_min, drop=True).where(ds['time.year'] <= year_max, drop=True).mean(dim=['lon','lat'])
         nice_time_plot(plotvar,ax,label=ds.name, title=title, ylabel=ylabel, xlabel=xlabel)
 
-def time_series_lonlat(ds_list, var, lon, lat, figsize=(9, 5.5), year_min=2010, year_max=2022, title=None, ylabel=None, xlabel=None):
+def time_series_lonlat(ds_list, var, lon, lat, figsize=(8.5, 5), year_min=2010, year_max=2022, title=None, ylabel=None, xlabel=None):
     fig = plt.figure(figsize=figsize)
     ax = plt.axes()
     ax.grid()
@@ -449,7 +482,7 @@ def time_series_lonlat(ds_list, var, lon, lat, figsize=(9, 5.5), year_min=2010, 
         plotvar=plotvar.sel(lon=lon, lat=lat, method='nearest')
         nice_time_plot(plotvar,ax,label=ds.name, title=title, ylabel=ylabel, xlabel=xlabel)
 
-def seasonal_cycle_ave(ds_list, var, figsize=(9, 5.5), year_min=2010, year_max=2022, title=None, ylabel=None, xlabel=None):
+def seasonal_cycle_ave(ds_list, var, figsize=(8.5, 5), year_min=2010, year_max=2022, title=None, ylabel=None, xlabel=None):
     fig = plt.figure(figsize=figsize)
     ax = plt.axes()
     if not title:
@@ -463,6 +496,92 @@ def seasonal_cycle_ave(ds_list, var, figsize=(9, 5.5), year_min=2010, year_max=2
     ax.grid()
     ax.set_xticks(np.arange(1,13))
     ax.set_xticklabels(months_name_list)
+
+###scatter plots###
+def scatter_temporal_mean(ds, var1, var2, reg=False):
+    """
+    Plots a scatter plot of the temporal mean values of two variables in an xarray dataset,
+    with an optional linear regression line and coefficient.
+
+    Parameters:
+    - ds: xarray.Dataset
+        The dataset containing the variables.
+    - var1: str
+        The name of the first variable.
+    - var2: str
+        The name of the second variable.
+    - reg: bool, optional
+        Whether to add a linear regression line and display the regression coefficient. Default is False.
+    """
+    # Compute the temporal mean for each variable across the time dimension
+    var1_mean = ds[var1].mean(dim='time')
+    var2_mean = ds[var2].mean(dim='time')
+    
+    # Flatten the grid data for scatter plotting
+    x = var1_mean.values.flatten()
+    y = var2_mean.values.flatten()
+    
+    # Plot the scatter plot
+    plt.figure(figsize=(8, 6))
+    plt.scatter(x, y, alpha=0.5)
+    plt.xlabel(f'{var1} (temporal mean)')
+    plt.ylabel(f'{var2} (temporal mean)')
+    plt.title(f'Scatter plot of {var1} vs {var2} (temporal mean)')
+    plt.grid(True)
+    
+    # Optional linear regression
+    if reg:
+        # Remove NaN values
+        mask = ~np.isnan(x) & ~np.isnan(y)
+        x = x[mask]
+        y = y[mask]
+        # Perform linear regression
+        slope, intercept, r_value, _, _ = linregress(x, y)
+        # Plot regression line
+        plt.plot(x, slope * x + intercept, color='red', label=f'Regression: y = {slope:.2f}x + {intercept:.2f}\n$R^2$ = {r_value**2:.2f}')
+        plt.legend()
+    
+    plt.show()
+
+#version with specifiable function for temporal aggregation, not working (yet)
+def scatter_temporal_aggregate(ds, var1, var2, agg_func="mean"):
+    """
+    Plots a scatter plot of aggregated temporal values of two variables in an xarray dataset.
+
+    Parameters:
+    - ds: xarray.Dataset
+        The dataset containing the variables.
+    - var1: str
+        The name of the first variable.
+    - var2: str
+        The name of the second variable.
+    - agg_func: str or callable, optional
+        The aggregation function to apply along the time dimension. It can be a string (like 'mean', 'max', 'min', 'sum') or
+        a callable function. Default is 'mean'.
+    """
+    # Select the aggregation function
+    if isinstance(agg_func, str):
+        agg_func = getattr(ds[var1], agg_func, None)
+        if agg_func is None:
+            raise ValueError(f"Aggregation function '{agg_func}' is not supported.")
+        var1_agg = agg_func(dim='time')
+        var2_agg = getattr(ds[var2], agg_func)(dim='time')
+    else:
+        var1_agg = ds[var1].reduce(agg_func, dim='time')
+        var2_agg = ds[var2].reduce(agg_func, dim='time')
+
+    # Flatten the grid data for scatter plotting
+    x = var1_agg.values.flatten()
+    y = var2_agg.values.flatten()
+    
+    # Plot the scatter plot
+    plt.figure(figsize=(8, 6))
+    plt.scatter(x, y, alpha=0.5)
+    plt.xlabel(f'{var1} (temporal {agg_func.__name__ if callable(agg_func) else agg_func})')
+    plt.ylabel(f'{var2} (temporal {agg_func.__name__ if callable(agg_func) else agg_func})')
+    plt.title(f'Scatter plot of {var1} vs {var2} (temporal {agg_func.__name__ if callable(agg_func) else agg_func})')
+    plt.grid(True)
+    plt.show()
 
 ### vertical profiles ###
 

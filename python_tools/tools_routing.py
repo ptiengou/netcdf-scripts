@@ -51,28 +51,55 @@ def stations_map_xy(x_values, y_values, title='Location of selected stations'):
     plt.scatter(x_values, y_values, s=30, marker='o')
     plt.title(title)
 
-def stations_map_dict(stations_dict, river_cond=None, name_cond=None, title='Location of selected stations', legend=True):
+def stations_map_dict(stations_dict, river_cond=None, name_cond=None, title='Location of selected stations', legend=True, extent=[-10, 2.5, 35, 45]):
+    """
+    Plots the stations from a dictionary on a map, filtering by river or name if specified.
+    Automatically assigns unique colors to each station based on the number of stations plotted.
+
+    Args:
+        stations_dict (dict): Dictionary containing station information.
+        river_cond (str, optional): Filter stations by river name.
+        name_cond (str, optional): Filter stations by station name.
+        title (str, optional): Title of the map. Defaults to 'Location of selected stations'.
+        legend (bool, optional): Whether to include a legend. Defaults to True.
+    """
+    # Filter stations based on conditions
+    filtered_stations = {
+        key: value for key, value in stations_dict.items()
+        if (river_cond and value['river'] == river_cond) or
+           (name_cond and value['name'] == name_cond) or
+           (not river_cond and not name_cond)
+    }
+
+    # Generate colors based on the number of filtered stations
+    num_stations = len(filtered_stations)
+    cmap = plt.get_cmap('tab20')  # Choose your colormap
+    colors = [cmap(i) for i in np.linspace(0, 1, num_stations)]
+
+    # Setup map
     fig = plt.figure(figsize=(10, 10))
     ax = plt.axes(projection=ccrs.PlateCarree())
     ax.coastlines()
     ax.add_feature(cfeature.RIVERS)
-    ax.set_extent([-10, 6, 35, 45])
+    ax.set_extent(extent)
+
+    # Gridlines
     gl = ax.gridlines(draw_labels=True, dms=True, x_inline=False, y_inline=False)
     gl.ylocator = plt.MaxNLocator(5)
     gl.right_labels = False
     gl.top_labels = False
-    for key, value in stations_dict.items():
-        if river_cond:
-            if value['river'] == river_cond:
-                plt.scatter(value['lon_grid'], value['lat_grid'], s=30, label=value['name'], marker='o')
-        elif name_cond:
-            if value['name'] == name_cond:
-                plt.scatter(value['lon_grid'], value['lat_grid'], s=30, label=value['name'], marker='o')
-        else:
-            plt.scatter(value['lon_grid'], value['lat_grid'], s=30, label=value['name'], marker='o')
+
+    # Plot each station with its unique color
+    for idx, (key, value) in enumerate(filtered_stations.items()):
+        plt.scatter(
+            value['lon_grid'], value['lat_grid'],
+            s=40, label=value['name'], marker='o', color=colors[idx]
+        )
+
+    # Add title and legend
     plt.title(title)
     if legend:
-        plt.legend()
+        plt.legend(loc='center left', bbox_to_anchor=(1, 0.5), borderaxespad=0.1)
 
 #discharge time plots
 def discharge_coord_ts(ds_list, coord_dict, var='hydrographs', figsize=(20, 10), year_min=2010, year_max=2022, title=None, ylabel=None, xlabel=None):
@@ -192,6 +219,7 @@ def metric_sim_module(sim: xr.DataArray, obs: xr.DataArray) -> float:
     metric_sim_module.__name__ = 'Simulated module'
     metric_sim_module.__short_name__ = 'Module (sim, m³/s)'
     metric_sim_module.__colormap__ = wet
+    metric_sim_module.__diff_colormap__ = wet
     metric_sim_module.__min_value__= 0
     metric_sim_module.__max_value__= None
 
@@ -215,6 +243,7 @@ def metric_obs_module(sim: xr.DataArray, obs: xr.DataArray) -> float:
     metric_obs_module.__name__ = 'Observed module'
     metric_obs_module.__short_name__ = 'Module (obs, m³/s)'
     metric_obs_module.__colormap__ = wet
+    metric_obs_module.__diff_colormap__ = wet
     metric_obs_module.__min_value__= 0
     metric_obs_module.__max_value__= None
 
@@ -237,7 +266,8 @@ def metric_bias(sim: xr.DataArray, obs: xr.DataArray) -> float:
     # Define function attributes
     metric_bias.__name__ = 'Bias'
     metric_bias.__short_name__ = 'Bias (m³/s)'
-    metric_bias.__colormap__ = emb
+    metric_bias.__colormap__ = emb_neutral
+    metric_bias.__diff_colormap__ = emb_neutral
     metric_bias.__min_value__= None
     metric_bias.__max_value__= None
 
@@ -261,6 +291,7 @@ def metric_tcorr(sim: xr.DataArray, obs: xr.DataArray) -> float:
     metric_tcorr.__name__ = 'Pearson correlation coefficient'
     metric_tcorr.__short_name__ = 'r'
     metric_tcorr.__colormap__ = bad_good
+    metric_tcorr.__diff_colormap__ = bad_goodW
     metric_tcorr.__min_value__= -1
     metric_tcorr.__max_value__= 1
 
@@ -285,6 +316,7 @@ def metric_nse(sim: xr.DataArray, obs: xr.DataArray) -> float:
     metric_nse.__name__ = 'Nash-Sutcliffe Efficiency'
     metric_nse.__short_name__ = 'NSE'
     metric_nse.__colormap__ = bad_good
+    metric_nse.__diff_colormap__ = bad_goodW
     metric_nse.__min_value__= 0
     metric_nse.__max_value__= 1
 
@@ -308,6 +340,7 @@ def metric_kge(sim: xr.DataArray, obs: xr.DataArray) -> float:
     metric_kge.__name__ = 'Kling-Gupta Efficiency'
     metric_kge.__short_name__ = 'KGE'
     metric_kge.__colormap__ = bad_good
+    metric_kge.__diff_colormap__ = bad_goodW
     metric_kge.__min_value__= -1
     metric_kge.__max_value__= 1
 
@@ -331,6 +364,7 @@ def metric_rmse(sim: xr.DataArray, obs: xr.DataArray) -> float:
     metric_rmse.__name__ = 'Root Mean Squared Error'
     metric_rmse.__short_name__ = 'RMSE'
     metric_rmse.__colormap__ = good_bad
+    metric_rmse.__diff_colormap__ = good_badW
     metric_rmse.__min_value__= 0
     metric_rmse.__max_value__= None
 
@@ -454,7 +488,7 @@ def display_metric_diff_map(sim1_ds: xr.DataArray, sim2_ds:xr.DataArray, obs_ds:
         metric1 = compute_metric_station(sim1_ds, obs_ds, key, station, metric_func)
         metric2 = compute_metric_station(sim2_ds, obs_ds, key, station, metric_func)
         metric = metric1 - metric2
-        cmap = metric_func.__colormap__
+        cmap = metric_func.__diff_colormap__
         # if not metric_min:
         #     metric_min = metric_func.__min_value__
         # if not metric_max:

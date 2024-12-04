@@ -10,13 +10,13 @@ default_map_figsize = (8,4)
 # plt.rcParams['hatch.linewidth'] = 6
 # plt.bar(0,2,hatch='//' , edgecolor = None)
 
-def nice_map(plotvar, ax, cmap=myvir, vmin=None, vmax=None, poly=None, sig_mask=None, hatch='//', sig_viz=6):
+def nice_map(plotvar, ax, cmap=myvir, vmin=None, vmax=None, poly=None, sig_mask=None, hatch='//', sig_viz=6, clabel=None):
     ax.coastlines()
     ax.add_feature(rivers)
     gl = ax.gridlines(draw_labels=True, dms=False, x_inline=False, y_inline=False, alpha=0.8)
     gl.right_labels = False
     gl.top_labels = False
-    gl.xlocator = plt.MaxNLocator(10)
+    gl.xlocator = plt.MaxNLocator(8)
     gl.ylocator = plt.MaxNLocator(9)
 
     if sig_mask is None:
@@ -36,6 +36,7 @@ def nice_map(plotvar, ax, cmap=myvir, vmin=None, vmax=None, poly=None, sig_mask=
         else:
             plot_obj = plotvar.plot(ax=ax, transform=ccrs.PlateCarree(), cmap=cmap, vmin=vmin, vmax=vmax)
             if sig_viz == 1:  # Hatching using pcolormesh
+                #probably does not work with xarray plot method
                 ax.pcolormesh(
                     plotvar['lon'], plotvar['lat'], sig_mask, 
                     transform=ccrs.PlateCarree(), hatch=hatch,
@@ -52,13 +53,14 @@ def nice_map(plotvar, ax, cmap=myvir, vmin=None, vmax=None, poly=None, sig_mask=
                     levels=[0.5], colors='black', linewidths=1, linestyles='dashed', transform=ccrs.PlateCarree()
                 )
             elif sig_viz == 4:  # Transparent contourf with hatches
+                #probably not working at all
                 ax.contourf(
                     plotvar['lon'], plotvar['lat'], sig_mask, 
                     levels=[0, 1], colors='none', hatches=[hatch], alpha=0, transform=ccrs.PlateCarree()
                 )
             elif sig_viz == 5:  # Custom scatter for significant points
                 significant_lon, significant_lat = np.meshgrid(plotvar['lon'], plotvar['lat'])
-                sig_points = sig_mask.values
+                sig_points = sig_mask
                 ax.scatter(
                     significant_lon[sig_points], significant_lat[sig_points], 
                     color='grey', marker='*', s=20, transform=ccrs.PlateCarree(), label='Significant'
@@ -88,16 +90,14 @@ def nice_map(plotvar, ax, cmap=myvir, vmin=None, vmax=None, poly=None, sig_mask=
     cbar = plot_obj.colorbar
     # cbar = plt.colorbar(plot_obj,ax=ax,shrink=0.8)
     # cbar.shrink(0.8) 
-
-    # remove legend on the cmap bar (NB:could be improved to include units ?)
-    cbar.set_label('')
+    cbar.set_label(clabel)
     ticks = np.linspace(vmin if vmin is not None else plotvar.min().values, 
                         vmax if vmax is not None else plotvar.max().values, 
-                        11)
+                        6)
     cbar.set_ticks(ticks)
     cbar.ax.yaxis.set_major_formatter(ticker.ScalarFormatter())
     cbar.ax.yaxis.get_major_formatter().set_scientific(True)
-    cbar.ax.yaxis.get_major_formatter().set_powerlimits((-2, 3))
+    cbar.ax.yaxis.get_major_formatter().set_powerlimits((-2, 4))
 
     # Optional: plot polygon
     if poly:
@@ -113,14 +113,16 @@ def map_plotvar(plotvar, vmin=None, vmax=None, cmap=myvir, figsize=default_map_f
         plot_hexagon(ax, show_center=hex_center)
     plt.title(title)
 
-def map_ave(ds, var, vmin=None, vmax=None, cmap=myvir, multiplier=1, figsize=default_map_figsize, hex=False, hex_center=False, title=None, poly=None):
+def map_ave(ds, var, vmin=None, vmax=None, cmap=myvir, multiplier=1, figsize=default_map_figsize, clabel=None, hex=False, hex_center=False, title=None, poly=None):
     fig = plt.figure(figsize=figsize)
     ax = plt.axes(projection=ccrs.PlateCarree())
     plotvar = ds[var].mean(dim='time') * multiplier
-    nice_map(plotvar, ax, cmap=cmap, vmin=vmin, vmax=vmax, poly=poly)
+    nice_map(plotvar, ax, cmap=cmap, vmin=vmin, vmax=vmax, poly=poly, clabel=clabel)
     if hex:
         plot_hexagon(ax, show_center=hex_center)
-    if title:
+    if title=="off":
+        pass
+    elif title:
         plt.title(title)
     else:
         # plt.title(var + ' (' + ds[var].attrs['units'] + ')')
@@ -130,13 +132,44 @@ def map_ave(ds, var, vmin=None, vmax=None, cmap=myvir, multiplier=1, figsize=def
         else:
             plt.title(var + ' (' + ds[var].attrs['units'] + ')')
 
-def map_diff_ave(ds1, ds2, var, vmin=None, vmax=None, cmap=emb, figsize=default_map_figsize, sig=False, shade=False, pvalue_limit=0.05, hatch='//', sig_viz=6, hex=False, hex_center=False, title=None):
+def map_diff_ave(ds1, ds2, var, vmin=None, vmax=None, cmap=emb, figsize=default_map_figsize, title=None, hex=False, hex_center=False,
+                 sig=False, sig_method=0 , pvalue=0.05, hatch='//', sig_viz=6, check_norm=False):
     fig = plt.figure(figsize=figsize)
     ax = plt.axes(projection=ccrs.PlateCarree())
     diff = (ds1[var]-ds2[var]).mean(dim='time')
 
     if sig:
-        p_values = xr.apply_ufunc(
+        sig_mask = compute_sig_mask(ds1, ds2, var, check_norm=check_norm, method=sig_method, pvalue=pvalue)
+        nice_map(diff, ax, cmap=cmap, vmin=vmin, vmax=vmax, sig_mask=sig_mask, hatch=hatch, sig_viz=sig_viz)
+
+    else:
+        print('No significance mask applied')
+        nice_map(diff, ax, cmap=cmap, vmin=vmin, vmax=vmax)
+    if hex:
+        plot_hexagon(ax, show_center=hex_center)
+    if title:
+        plt.title(title)
+    else:
+        plt.title(var + ' difference (' + ds1.name + ' - ' + ds2.name + ', ' + ds1[var].attrs['units'] + ')')
+
+def compute_sig_mask(ds1, ds2, var, check_norm, method, pvalue):
+    diff=ds1[var]-ds2[var]
+    if method == 0:
+        print('Significance method 0: two-sample t-test')
+        if check_norm:
+            check_normality(ds1, var, pvalue)
+            check_normality(ds2, var, pvalue)
+        # Two-sample t-test
+        _, pvalue = stats.ttest_ind(ds1[var], ds2[var], axis=0)
+
+        #alternative : related samples t-test
+        # _, pvalue = stats.ttest_rel(ds1[var1], ds2[var2], axis=0)    
+    elif method == 0.1:
+        #initial version used (independent samples ttest)
+        if check_norm:
+            check_normality(ds1, var, pvalue)
+            check_normality(ds2, var, pvalue)
+        sample_pvalues = xr.apply_ufunc(
             lambda x, y: ttest_ind(x, y, axis=0, nan_policy='omit').pvalue, 
             ds1[var], ds2[var],
             input_core_dims=[['time'], ['time']],
@@ -146,17 +179,108 @@ def map_diff_ave(ds1, ds2, var, vmin=None, vmax=None, cmap=emb, figsize=default_
             output_dtypes=[float],
             dask_gufunc_kwargs={'allow_rechunk': True}
         )
-        mask=p_values< pvalue_limit
-        nice_map(diff, ax, cmap=cmap, vmin=vmin, vmax=vmax, sig_mask=mask, hatch=hatch, sig_viz=sig_viz)
+    elif method == 1:
+        print('Significance method 1: single sample t-test')
+        if check_norm:
+            check_normality(ds1-ds2, var, pvalue)
+        # Single sample t-test on diff
+        _, sample_pvalues = stats.ttest_1samp(diff, 0, axis=0)
+    elif method == 2:
+        # Wilcoxon signed-rank test
+        print('Significance method 2: Wilcoxon signed-rank test')
+        _, sample_pvalues = stats.wilcoxon(ds1[var], ds2[var], axis=0)
+    elif method == 3:
+        # Mann-Whitney U test
+        print('Significance method 3: Mann-Whitney U test')
+        _, sample_pvalues = stats.mannwhitneyu(ds1[var], ds2[var], axis=0)
+    return sample_pvalues < pvalue
 
+def check_normality(ds, var, pvalue=0.05, method='shapiro'):
+    """
+    Check the normality of a variable in a dataset using different methods.
+
+    Parameters:
+        data (pd.DataFrame or np.ndarray): Input dataset.
+        variable (str): Column name for the variable to test (if DataFrame).
+                        If np.ndarray, it assumes the array is the variable itself.
+        pvalue (float): Significance level for the test (default: 0.05).
+        method (str): Method for testing normality. Options:
+                      - 'shapiro': Shapiro-Wilk Test
+                      - 'kstest': Kolmogorov-Smirnov Test
+                      - 'anderson': Anderson-Darling Test
+                      Default is 'shapiro'.
+
+    Returns:
+
+    Raises:
+        ValueError: If the specified method is not recognized.
+    """
+    print("Checking if distributions are normal")
+    if method == 'shapiro':
+        # Shapiro-Wilk Test
+        pvalues, percentage = compute_shapiro_pvalues(ds, var, pvalue)
+    elif method == 'kstest':
+        # Kolmogorov-Smirnov Test
+        pvalues, percentage = compute_kstest_pvalues(ds, var, pvalue)
+    elif method == 'anderson':
+        print("not implemented")
+        pass
     else:
-        nice_map(diff, ax, cmap=cmap, vmin=vmin, vmax=vmax)
-    if hex:
-        plot_hexagon(ax, show_center=hex_center)
-    if title:
-        plt.title(title)
-    else:
-        plt.title(var + ' difference (' + ds1.name + ' - ' + ds2.name + ', ' + ds1[var].attrs['units'] + ')')
+        raise ValueError("Unsupported method. Choose from 'shapiro', 'kstest', or 'anderson'.")
+    # print(result)
+    return pvalues, percentage
+
+def compute_shapiro_pvalues(ds, var, pvalue):
+    # Define a helper function for Shapiro-Wilk test
+    def shapiro_pvalue(time_series):
+        if len(time_series) < 3:  # Shapiro requires at least 3 observations
+            print("Warning: Not enough data for Shapiro-Wilk test.")
+            return float("nan")
+        _, p_value = stats.shapiro(time_series)
+        return p_value
+
+    # Apply the function along the 'time' dimension
+    p_values = xr.apply_ufunc(
+        shapiro_pvalue,
+        ds[var],
+        input_core_dims=[["time"]],  # Apply along 'time' dimension
+        vectorize=True,             # Enable vectorization for efficiency
+        dask="parallelized",        # Use Dask if data is chunked
+        output_dtypes=[float],      # Output is a float (p-value)
+        dask_gufunc_kwargs={"allow_rechunk": True}  # Allow rechunking
+    )
+    #count number of significant p-values (takes time...)
+    non_sig_cellnb = np.sum(p_values>=pvalue).values
+    total_cellnb = np.sum(p_values>0.0).values
+    percentage_non_sig=100*non_sig_cellnb/(total_cellnb + 1e-16)
+    print('Number of non-significant cells for Shapiro (pvalue={}): {} ({:.2f}%)'.format(pvalue, non_sig_cellnb, percentage_non_sig))
+    return p_values, percentage_non_sig
+
+def compute_kstest_pvalues(ds, var, pvalue):
+    # Define a helper function for Shapiro-Wilk test
+    def kstest_pvalue(time_series):
+        if len(time_series) < 3:  # Shapiro requires at least 3 observations
+            print("Warning: Not enough data for Shapiro-Wilk test.")
+            return float("nan")
+        _, p_value = stats.kstest(time_series)
+        return p_value
+
+    # Apply the function along the 'time' dimension
+    p_values = xr.apply_ufunc(
+        kstest_pvalue,
+        ds[var],
+        input_core_dims=[["time"]],  # Apply along 'time' dimension
+        vectorize=True,             # Enable vectorization for efficiency
+        dask="parallelized",        # Use Dask if data is chunked
+        output_dtypes=[float],      # Output is a float (p-value)
+        dask_gufunc_kwargs={"allow_rechunk": True}  # Allow rechunking
+    )
+    #count number of significant p-values
+    non_sig_cellnb = np.sum(p_values>=pvalue).values
+    total_cellnb = np.sum(p_values>0.0).values
+    percentage_non_sig=non_sig_cellnb/(total_cellnb + 1e-10)
+    print('Number of non-significant cells for Kolmogorov-Smirnov (pvalue={}): {} ({:.2f}%)'.format(pvalue, non_sig_cellnb, percentage_non_sig))
+    return p_values, percentage_non_sig
 
 def map_rel_diff_ave(ds1, ds2, var, vmin=None, vmax=None, cmap=emb, multiplier=1, figsize=default_map_figsize, hex=False, hex_center=False):
     fig = plt.figure(figsize=figsize)
@@ -194,7 +318,7 @@ def map_seasons(plotvar, vmin=None, vmax=None, cmap=myvir, figsize=(12,7), hex=F
             plot_hexagon(axs.flatten()[i], show_center=hex_center)
 
 ## quiver plots for transport ##
-def map_wind(ds, extra_var='wind speed', height='10m', figsize=default_map_figsize, cmap=reds, dist=6, scale=100):
+def map_wind(ds, extra_var='wind speed', height='10m', vmin=None, vmax=None, figsize=default_map_figsize, cmap=reds, dist=6, scale=100):
     fig = plt.figure(figsize=figsize)
     ax = plt.axes(projection=ccrs.PlateCarree())
     windvar_u=ds['u'+height].mean(dim='time')
@@ -204,7 +328,7 @@ def map_wind(ds, extra_var='wind speed', height='10m', figsize=default_map_figsi
         plotvar = (windvar_u**2 + windvar_v**2 ) ** (1/2)
     else:
         plotvar = ds[extra_var].mean(dim='time')
-    nice_map(plotvar, ax, cmap=cmap)
+    nice_map(plotvar, ax, cmap=cmap, vmin=vmin, vmax=vmax)
 
     #plot wind vectors
     windx = windvar_u[::dist,::dist]
@@ -214,14 +338,14 @@ def map_wind(ds, extra_var='wind speed', height='10m', figsize=default_map_figsi
     quiver = ax.quiver(longi, lati, windx, windy, transform=ccrs.PlateCarree(), scale=scale)
 
     quiverkey_scale = scale/10
-    plt.quiverkey(quiver, X=0.95, Y=0.05, U=quiverkey_scale, label='{} m/s'.format(quiverkey_scale), labelpos='S')
+    plt.quiverkey(quiver, X=0.93, Y=0.08, U=quiverkey_scale, label='{} m/s'.format(quiverkey_scale), labelpos='S')
 
     if (height == '10m'):
         plt.title('10m wind (m/s) and {}'.format(extra_var))
     else :
         plt.title('{} hPa wind (m/s) and {}'.format(height, extra_var))
 
-def map_wind_diff(ds1, ds2, height='10m', figsize=default_map_figsize, cmap=emb, dist=6, scale=100, hex=False, hex_center=False):
+def map_wind_diff(ds1, ds2, height='10m', figsize=default_map_figsize, vmin=None, vmax=None, cmap=emb, dist=6, scale=100, hex=False, hex_center=False):
     fig = plt.figure(figsize=figsize)
     ax = plt.axes(projection=ccrs.PlateCarree())
     windvar_u1=ds1['u'+height].mean(dim='time')
@@ -232,7 +356,7 @@ def map_wind_diff(ds1, ds2, height='10m', figsize=default_map_figsize, cmap=emb,
     wind_speed1 = (windvar_u1**2 + windvar_v1**2 ) ** (1/2)
     wind_speed2 = (windvar_u2**2 + windvar_v2**2 ) ** (1/2)
     wind_speed_diff = wind_speed1 - wind_speed2
-    nice_map(wind_speed_diff, ax, cmap=cmap)
+    nice_map(wind_speed_diff, ax, cmap=cmap, vmin=vmin, vmax=vmax)
     if hex:
         plot_hexagon(ax, show_center=hex_center)
     #plot wind vectors
@@ -243,7 +367,7 @@ def map_wind_diff(ds1, ds2, height='10m', figsize=default_map_figsize, cmap=emb,
     quiver = ax.quiver(longi, lati, windx, windy, transform=ccrs.PlateCarree(), scale=scale)
 
     quiverkey_scale = scale/10
-    plt.quiverkey(quiver, X=0.95, Y=0.05, U=quiverkey_scale, label='{} m/s'.format(quiverkey_scale), labelpos='S')
+    plt.quiverkey(quiver, X=0.93, Y=0.08, U=quiverkey_scale, label='{} m/s'.format(quiverkey_scale), labelpos='S')
 
     if (height == '10m'):
         plt.title('10m wind speed (m/s) and direction change ({} - {})'.format(ds1.name, ds2.name))
@@ -315,3 +439,7 @@ def plot_hexagon(ax, center_lon=-3.7, center_lat=40.43, sim_radius_km=1250, nbp=
     if show_center:
         ax.plot(center_lon, center_lat, marker='.', color='red', markersize=8)
 
+#native ICO grid
+
+def plot_ICO_grid(ax, lon, lat, color='black', linewidth=0.5):
+    return()

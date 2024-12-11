@@ -1,4 +1,5 @@
 from tools import *
+from tools_mapping import *
 
 #dict from JP_csv filtered with stations in obs
 #keeping only data after 2010
@@ -77,7 +78,7 @@ def stations_map_dict(stations_dict, river_cond=None, name_cond=None, title='Loc
     colors = [cmap(i) for i in np.linspace(0, 1, num_stations)]
 
     # Setup map
-    fig = plt.figure(figsize=(10, 10))
+    fig = plt.figure(figsize=(8, 10))
     ax = plt.axes(projection=ccrs.PlateCarree())
     ax.coastlines()
     ax.add_feature(cfeature.RIVERS)
@@ -91,13 +92,22 @@ def stations_map_dict(stations_dict, river_cond=None, name_cond=None, title='Loc
 
     # Plot each station with its unique color
     for idx, (key, value) in enumerate(filtered_stations.items()):
+        name=value['name']
+        number=value['station_nb']
+        label='{} ({})'.format(number, name)
         plt.scatter(
             value['lon_grid'], value['lat_grid'],
-            s=40, label=value['name'], marker='o', color=colors[idx]
+            s=190, label=label, marker='o', color=colors[idx]
+        )
+        # Add text next to the point
+        plt.text(
+            value['lon_grid'] + 0, value['lat_grid'] + 0.0,  # Adjust the offset for better placement
+            str(number), fontsize=15, color='black'
         )
 
     # Add title and legend
-    plt.title(title)
+    if title:
+        plt.title(title)
     if legend:
         plt.legend(loc='center left', bbox_to_anchor=(1, 0.5), borderaxespad=0.1)
 
@@ -175,7 +185,11 @@ def ts_with_obs(ds_list, stations_ds, ax, station_id, station_data, var='hydrogr
     for ds in ds_list:
         plotvar=ds[var].sel(lon=lon, lat=lat, method='nearest')
         plotvar=plotvar.where(mask)
-        nice_time_plot(plotvar,ax,label=ds.name, title=station_data['name'], ylabel=ylabel, xlabel=xlabel)
+        name=station_data['name']
+        nb=station_data['station_nb']
+        river=station_data['river']
+        title= 'Station {} ({}, on river {})'.format(nb, name, river)
+        nice_time_plot(plotvar,ax,label=ds.name, title=title, color=ds.attrs['plot_color'], ylabel=ylabel, xlabel=xlabel)
 
 def sc_station(stations_ds, ax, station_id, name=None, var='runoff_mean', year_min=2010, year_max=2022, ylabel=None, xlabel=None):
     ax.grid()
@@ -201,7 +215,11 @@ def sc_with_obs(ds_list, stations_ds, ax, station_id, station_data, var='hydrogr
         plotvar=ds[var].sel(lon=lon, lat=lat, method='nearest')
         plotvar=plotvar.where(mask)
         plotvar=plotvar.groupby('time.month').mean(dim='time')
-        nice_time_plot(plotvar,ax,label=ds.name, title=station_data['name'], ylabel=ylabel, xlabel=xlabel)
+        name=station_data['name']
+        nb=station_data['station_nb']
+        river=station_data['river']
+        title= 'Station {} ({}, on river {})'.format(nb, name, river)
+        nice_time_plot(plotvar,ax,label=ds.name, title=title, color=ds.attrs['plot_color'], ylabel=ylabel, xlabel=xlabel)
 
 #metrics definition
 def metric_sim_module(sim: xr.DataArray, obs: xr.DataArray) -> float:

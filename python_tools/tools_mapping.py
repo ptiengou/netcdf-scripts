@@ -50,7 +50,7 @@ def nice_map(plotvar, ax, cmap=myvir, vmin=None, vmax=None, poly=None, sig_mask=
             elif sig_viz == 3:  # Contours around significant regions
                 ax.contour(
                     plotvar['lon'], plotvar['lat'], sig_mask, 
-                    levels=[0.5], colors='black', linewidths=1, linestyles='dashed', transform=ccrs.PlateCarree()
+                    levels=[0.5], colors='red', linewidths=1, linestyles='dashed', transform=ccrs.PlateCarree()
                 )
             elif sig_viz == 4:  # Transparent contourf with hatches
                 #probably not working at all
@@ -66,7 +66,7 @@ def nice_map(plotvar, ax, cmap=myvir, vmin=None, vmax=None, poly=None, sig_mask=
                     color='grey', marker='*', s=20, transform=ccrs.PlateCarree(), label='Significant'
                 )
             elif sig_viz == 6:  # Overlay hatching for significant regions
-                masked_data = np.ma.masked_where(~sig_mask, plotvar)
+                masked_data = np.ma.masked_where(sig_mask, plotvar)
                 ax.contourf(
                     plotvar['lon'], plotvar['lat'], masked_data, 
                     levels=np.linspace(vmin if vmin else plotvar.min(), 
@@ -105,10 +105,10 @@ def nice_map(plotvar, ax, cmap=myvir, vmin=None, vmax=None, poly=None, sig_mask=
 
     plt.tight_layout()
 
-def map_plotvar(plotvar, vmin=None, vmax=None, cmap=myvir, figsize=default_map_figsize, title=None, hex=False, hex_center=False):
+def map_plotvar(plotvar, vmin=None, vmax=None, cmap=myvir, figsize=default_map_figsize, title=None, poly=None, hex=False, hex_center=False):
     fig = plt.figure(figsize=figsize)
     ax = plt.axes(projection=ccrs.PlateCarree())
-    nice_map(plotvar, ax, cmap, vmin, vmax)
+    nice_map(plotvar, ax, cmap, vmin, vmax, poly=poly)
     if hex:
         plot_hexagon(ax, show_center=hex_center)
     plt.title(title)
@@ -160,7 +160,7 @@ def compute_sig_mask(ds1, ds2, var, check_norm, method, pvalue):
             check_normality(ds1, var, pvalue)
             check_normality(ds2, var, pvalue)
         # Two-sample t-test
-        _, pvalue = stats.ttest_ind(ds1[var], ds2[var], axis=0)
+        _, sample_pvalues = stats.ttest_ind(ds1[var], ds2[var], axis=0)
 
         #alternative : related samples t-test
         # _, pvalue = stats.ttest_rel(ds1[var1], ds2[var2], axis=0)    
@@ -374,7 +374,7 @@ def map_wind_diff(ds1, ds2, height='10m', figsize=default_map_figsize, vmin=None
     else :
         plt.title('{} hPa wind speed (m/s) and direction change ({} - {})'.format(height, ds1.name, ds2.name))
 
-def map_moisture_transport(ds, extra_var='norm', figsize=default_map_figsize, cmap=reds, dist=6, scale=100):
+def map_moisture_transport(ds, extra_var='norm', figsize=default_map_figsize, cmap=reds, vmin=None, vmax=None, dist=6, scale=100, poly=None):
     fig = plt.figure(figsize=figsize)
     ax = plt.axes(projection=ccrs.PlateCarree())
     windvar_u=ds['uq'].mean(dim='time')
@@ -384,7 +384,7 @@ def map_moisture_transport(ds, extra_var='norm', figsize=default_map_figsize, cm
         plotvar = (windvar_u**2 + windvar_v**2 ) ** (1/2)
     else:
         plotvar = ds[extra_var].mean(dim='time')
-    nice_map(plotvar, ax, cmap=cmap)
+    nice_map(plotvar, ax, cmap=cmap, vmin=vmin, vmax=vmax, poly=poly)
 
     #plot wind vectors
     windx = windvar_u[::dist,::dist]

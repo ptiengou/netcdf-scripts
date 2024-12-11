@@ -16,6 +16,9 @@ import scipy.stats as stats
 from scipy.stats import linregress
 from scipy.interpolate import griddata
 from matplotlib.markers import MarkerStyle
+import json
+from pprint import pprint
+
 
 plt.rcParams.update(
         {
@@ -325,6 +328,140 @@ def plot_polygon(dict_polygon, ax):
     polygon = np.vstack([polygon, polygon[0]])  # Close the polygon
     ax.plot(polygon[:, 0], polygon[:, 1], 'r-', linewidth=2, c='red')
 
+def polygon_area(ds, poly):
+    """
+    Calculate the area of a polygon defined by a dictionary of coordinates
+    """
+    mask=polygon_to_mask(ds, poly)
+    mask.attrs['name'] = 'mask'
+    polygon_ds=apply_2Dmask_to_dataset(ds, mask)
+    area = (polygon_ds['cell_height'] * polygon_ds['cell_width']).sum()
+    area.attrs['units'] = 'm²'
+    print('Area : ',area.values, area.attrs['units'])
+    return area.values
+
+def mask_area(ds, mask):
+    """
+    Calculate the area of a mask
+    """
+    mask.attrs['name'] = 'mask'
+    masked_ds=apply_2Dmask_to_dataset(ds, mask)
+    area = (masked_ds['cell_height'] * masked_ds['cell_width']).sum()
+    area.attrs['units'] = 'm²'
+    print('Area : ',area.values, area.attrs['units'])
+    return area.values
+
+def compute_grid_cell_width(dataset, lon_name="lon", lat_name="lat"):
+    """
+    Compute the width (east-west distance) of each grid cell in meters and add it as a variable to the dataset.
+
+    Parameters:
+        dataset (xarray.Dataset): The input dataset with longitude and latitude dimensions.
+        lon_name (str): Name of the longitude dimension in the dataset. Default is "lon".
+        lat_name (str): Name of the latitude dimension in the dataset. Default is "lat".
+    
+    Returns:
+        xarray.Dataset: The input dataset with a new field "cell_width" added.
+    """
+    # Extract latitudes and longitudes
+    lon = dataset[lon_name]
+    lat = dataset[lat_name]
+
+    # Calculate differences between adjacent grid points in longitude (in radians)
+    dlon = lon.diff(dim=lon_name)
+    dlat = lat.diff(dim=lat_name)
+
+    #add on the last value to have the same height
+    dlon = xr.concat([dlon, dlon.isel({lon_name:-1})], dim=lon_name)
+    dlat = xr.concat([dlat, dlat.isel({lat_name:-1})], dim=lat_name)
+
+    width = 111.32 * 1000 * np.cos(np.radians(lat)) * np.abs(dlon)  # in meters
+    height = 111.32 * 1000 * np.abs(dlat) * (0.0 * lon +1.0)  # in meters
+    # Add the width as a new variable to the dataset
+    width_expanded = xr.DataArray(
+        width,
+        dims=[lat_name,lon_name],  # The dimensions should match the dataset's dimensions
+        coords={ lon_name: lon, lat_name: lat}  # Correctly align the coordinates
+    )
+    height_expanded = xr.DataArray(
+        height,
+        dims=[lat_name,lon_name],  # The dimensions should match the dataset's dimensions
+        coords={ lon_name: lon, lat_name: lat}  # Correctly align the coordinates
+    )
+
+    # Assign the calculated width as a new variable in the dataset
+    dataset = dataset.assign(cell_width=width_expanded)
+    dataset['cell_width'].attrs['units'] = 'm'
+    dataset['cell_width'].attrs['name'] = 'grid cell width'
+
+    dataset = dataset.assign(cell_height=height_expanded)
+    dataset['cell_height'].attrs['units'] = 'm'
+    dataset['cell_height'].attrs['name'] = 'grid cell height'
+
+    dataset["manual_area"] = dataset["cell_width"] * dataset["cell_height"]
+    dataset["manual_area"].attrs["units"] = "m²"
+    dataset["manual_area"].attrs["name"] = "Grid cell area"
+
+    return dataset
+
+def polygon_edge(ds, polygon):
+    """
+    Create a mask for the edges of a polygon on the grid of a dataset.
+
+    Parameters:
+    - ds (xr.Dataset): The dataset with `lon` and `lat` coordinates.
+    - polygon (dict): Dictionary with vertices of the polygon, defined as:
+                      {1: {'lon': lon1, 'lat': lat1}, 2: {'lon': lon2, 'lat': lat2}, ...}
+
+    Returns:
+    - xr.DataArray: A boolean mask with the same shape as the dataset grid, where
+                    True indicates the points that lie on the polygon edges.
+    """
+    lons = [polygon[key]['lon'] for key in sorted(polygon)]
+    lats = [polygon[key]['lat'] for key in sorted(polygon)]
+    if (lons[0], lats[0]) != (lons[-1], lats[-1]):
+        lons.append(lons[0])
+        lats.append(lats[0])
+    mask = xr.DataArray(np.zeros((len(ds['lat']), len(ds['lon'])), dtype=bool), coords=[ds['lat'], ds['lon']], dims=['lat', 'lon'])
+    edges = zip(lons[:-1], lats[:-1], lons[1:], lats[1:])
+    for lon1, lat1, lon2, lat2 in edges:
+        num_samples = max(int(np.hypot(lon2 - lon1, lat2 - lat1) * 100), 2)
+        lons_edge = np.linspace(lon1, lon2, num_samples)
+        lats_edge = np.linspace(lat1, lat2, num_samples)
+        lon_indices = ds['lon'].to_numpy()
+        lat_indices = ds['lat'].to_numpy()
+        for lon, lat in zip(lons_edge, lats_edge):
+            lon_idx = np.abs(lon_indices - lon).argmin()
+            lat_idx = np.abs(lat_indices - lat).argmin()
+            mask[lat_idx, lon_idx] = True
+    return mask
+
+def mask_edge(input_mask):
+    """
+    Create a mask for the edges of an input mask.
+
+    Parameters:
+    - input_mask (xr.DataArray): A boolean mask where True indicates the region of interest.
+
+    Returns:
+    - xr.DataArray: A boolean mask with the same shape as the input mask, where
+                    True indicates the edge of the original mask.
+    """
+    padded_mask = xr.concat([input_mask.shift(lat=1, fill_value=False),
+                              input_mask.shift(lat=-1, fill_value=False),
+                              input_mask.shift(lon=1, fill_value=False),
+                              input_mask.shift(lon=-1, fill_value=False)],
+                             dim='direction').any(dim='direction')
+    edge_mask = padded_mask & ~input_mask
+    return edge_mask
+def mask_edge_right(input_mask):
+    return input_mask.shift(lon=1, fill_value=False) & ~input_mask
+def mask_edge_left(input_mask):
+    return input_mask.shift(lon=-1, fill_value=False) & ~input_mask
+def mask_edge_top(input_mask):
+    return input_mask.shift(lat=1, fill_value=False) & ~input_mask
+def mask_edge_bottom(input_mask):
+    return input_mask.shift(lat=-1, fill_value=False) & ~input_mask
 
 ### time plots ###
 months_name_list=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
@@ -912,3 +1049,148 @@ def profile_preslevs(ds_list, var, figsize=(6,8), preslevelmax=20, title=' verti
         ax.plot(plotvar, pressure, label=ds.name) 
     ax.legend()
                      
+
+#moisture flux functions
+def moisture_flux_rectangle(ds, polygon):
+    """
+    Used for development
+    Function that takes a dataset and a polygon
+    Calculates the moisture input in kg/m2/s using uq and vq variables
+    Summing along vertical segment for uq and horizontal segment for vq
+    """
+    var1='uq'
+    var2='vq'
+    # Extract polygon coordinates
+    lons = [polygon[key]['lon'] for key in polygon]
+    lats = [polygon[key]['lat'] for key in polygon]
+
+    # Calculate bounds of the polygon
+    lon_min, lon_max = min(lons), max(lons)
+    lat_min, lat_max = min(lats), max(lats)
+
+    uq_integ = ds[var1].mean(dim='time') * ds['cell_height']
+    vq_integ = ds[var2].mean(dim='time') * ds['cell_width']
+
+    # Select data along the polygon's edges (bounding box)
+    uq_left     = uq_integ.sel(lon=lon_min, method='nearest').sel(lat=slice(lat_min, lat_max))  # Left edge
+    uq_right    = uq_integ.sel(lon=lon_max, method='nearest').sel(lat=slice(lat_min, lat_max))  # Right edge
+    vq_bottom   = vq_integ.sel(lat=lat_min, method='nearest').sel(lon=slice(lon_min, lon_max))  # Bottom edge
+    vq_top      = vq_integ.sel(lat=lat_max, method='nearest').sel(lon=slice(lon_min, lon_max))  # Top edge
+
+    # Sum moisture fluxes along respective edges
+    u_input     = uq_left.sum(dim='lat')  # Moisture entering through the left
+    u_output    = uq_right.sum(dim='lat')  # Moisture exiting through the right
+    v_input     = vq_bottom.sum(dim='lon')  # Moisture entering through the bottom
+    v_output    = vq_top.sum(dim='lon')  # Moisture exiting through the top
+
+    # Calculate total moisture flux
+    total = u_input - u_output + v_input - v_output
+
+    #make a dict with 4 components and total
+    output_dict = {'u_input': u_input.values,
+                   'u_output': u_output.values,
+                   'v_input': v_input.values,
+                   'v_output': v_output.values,
+                   'total': total.values
+                   }
+    return(output_dict)
+
+def moisture_flux_polygon(ds, polygon):
+    """
+    Used for develoment
+    """
+    #create variables for integrated flux over edges
+    ds['uq_integ'] = ds['uq'].mean(dim='time') * ds['cell_height']
+    ds['vq_integ'] = ds['vq'].mean(dim='time') * ds['cell_width']
+
+    #creat masks for edges
+    mask0=polygon_to_mask(ds, polygon)
+    mask_b=mask_edge_bottom(mask0)
+    mask_b.attrs['name']='mask_bottom'
+    mask_t=mask_edge_top(mask0)
+    mask_t.attrs['name']='mask_top'
+    mask_r=mask_edge_right(mask0)
+    mask_r.attrs['name']='mask_right'
+    mask_l=mask_edge_left(mask0)
+    mask_l.attrs['name']='mask_left'
+
+    #apply masks to dataset
+    masked_b = apply_2Dmask_to_dataset(ds, mask_b)
+    masked_t = apply_2Dmask_to_dataset(ds, mask_t)
+    masked_l = apply_2Dmask_to_dataset(ds, mask_l)
+    masked_r = apply_2Dmask_to_dataset(ds, mask_r)
+
+    #identify relevant masked variable for each edge
+    masked_vq_b = masked_b['vq_integ']
+    masked_vq_t = masked_t['vq_integ']
+    masked_uq_l = masked_l['uq_integ']
+    masked_uq_r = masked_r['uq_integ']
+
+    #calculate moisture fluxes on each edge
+    u_input     = masked_uq_l.sum(dim=['lon','lat'])  # Moisture entering through the left
+    u_output    = masked_uq_r.sum(dim=['lon','lat'])  # Moisture exiting through the right
+    v_input     = masked_vq_b.sum(dim=['lon','lat'])  # Moisture entering through the bottom
+    v_output    = masked_vq_t.sum(dim=['lon','lat'])  # Moisture exiting through the top
+
+    # Calculate total moisture flux
+    total = u_input - u_output + v_input - v_output
+    #make a dict with 4 components and total
+    output_dict = {'u_input': u_input.values,
+                   'u_output': u_output.values,
+                   'v_input': v_input.values,
+                   'v_output': v_output.values,
+                   'total': total.values
+                   }
+    return(output_dict)
+
+def moisture_flux_mask(ds, mask):
+    """
+    Compute the moisture fluxes across the edges of a given mask.
+    The ds must be 2D (no time dimension), averaged either annually or seasonally (or monthly).
+    ds and mask must have a name attribute.
+    """
+    #create variables for integrated flux over edges
+    # ds['uq_integ'] = ds['uq'].mean(dim='time') * ds['cell_height']
+    # ds['vq_integ'] = ds['vq'].mean(dim='time') * ds['cell_width']
+    ds['uq_integ'] = ds['uq'] * ds['cell_height']
+    ds['vq_integ'] = ds['vq'] * ds['cell_width']
+
+    #creat masks for edges
+    mask0=mask
+    mask_b=mask_edge_bottom(mask0)
+    mask_b.attrs['name']='mask_bottom'
+    mask_t=mask_edge_top(mask0)
+    mask_t.attrs['name']='mask_top'
+    mask_r=mask_edge_right(mask0)
+    mask_r.attrs['name']='mask_right'
+    mask_l=mask_edge_left(mask0)
+    mask_l.attrs['name']='mask_left'
+
+    #apply masks to dataset
+    masked_b = apply_2Dmask_to_dataset(ds, mask_b)
+    masked_t = apply_2Dmask_to_dataset(ds, mask_t)
+    masked_l = apply_2Dmask_to_dataset(ds, mask_l)
+    masked_r = apply_2Dmask_to_dataset(ds, mask_r)
+
+    #identify relevant masked variable for each edge
+    masked_vq_b = masked_b['vq_integ']
+    masked_vq_t = masked_t['vq_integ']
+    masked_uq_l = masked_l['uq_integ']
+    masked_uq_r = masked_r['uq_integ']
+
+    #calculate moisture fluxes on each edge
+    u_input     = masked_uq_l.sum(dim=['lon','lat'])  # Moisture entering through the left
+    u_output    = masked_uq_r.sum(dim=['lon','lat'])  # Moisture exiting through the right
+    v_input     = masked_vq_b.sum(dim=['lon','lat'])  # Moisture entering through the bottom
+    v_output    = masked_vq_t.sum(dim=['lon','lat'])  # Moisture exiting through the top
+
+    # Calculate total moisture flux
+    total = u_input - u_output + v_input - v_output
+    #make a dict with 4 components and total
+    output_dict = {'u_input': u_input.values,
+                   'u_output': u_output.values,
+                   'v_input': v_input.values,
+                   'v_output': v_output.values,
+                   'total': total.values
+                   }
+    return(output_dict)

@@ -38,6 +38,27 @@ stations_dict_filtered={
     6213800: {'name': 'Trillo', 'river': 'Tagus River', 'lat_grid': 40.70833206176758, 'lon_grid': -2.5749928951263428, 'last_record': '2013-09-15'}
     }
 
+proper_stations_dict = {
+    6226400: {'name': 'Zaragoza',           'river': 'Ebro',            'lat_grid': 41.67499,   'lon_grid': -0.90832,   'station_nb': 1},
+    6212410: {'name': 'Tore',               'river': 'Douro',           'lat_grid': 41.50833,   'lon_grid': -5.47499,   'station_nb': 2},
+    6213700: {'name': 'Talavera',           'river': 'Tagus',           'lat_grid': 39.95833,   'lon_grid': -4.82499,   'station_nb': 3},
+    6216510: {'name': 'Azud de Badajoz',    'river': 'Guadiana',        'lat_grid': 38.86199,   'lon_grid': -7.01,      'station_nb': 4}, 
+    6217140: {'name': 'Mengibar',           'river': 'Guadalquivir',    'lat_grid': 37.98425,   'lon_grid': -3.79939,   'station_nb': 5},     
+    6226650: {'name': 'Fraga',              'river': 'Cinca',           'lat_grid': 41.52499,   'lon_grid': 0.341674,   'station_nb': 6},
+    6226600: {'name': 'Seros',              'river': 'Segre',           'lat_grid': 41.45833,   'lon_grid': 0.425007,   'station_nb': 7},
+    6212700: {'name': 'Peral De Arlanza',   'river': 'Arlanza',         'lat_grid': 42.07500,   'lon_grid': -4.07499,   'station_nb': 8},
+    6217700: {'name': 'Pinos Puente',       'river': 'Frailes',         'lat_grid': 37.27499,   'lon_grid': -3.75832,   'station_nb': 9},
+    6226300: {'name': 'Castejon',           'river': 'Ebro',            'lat_grid': 42.17499,   'lon_grid': -1.69165,   'station_nb': 10},
+    6216800: {'name': 'Quintanar',          'river': 'Giguela',         'lat_grid': 39.64166,   'lon_grid': -3.07499,   'station_nb': 11},
+    6213900: {'name': 'Peralejos',          'river': 'Tagus',           'lat_grid': 40.59166,   'lon_grid': -1.92499,   'station_nb': 12},
+    6213800: {'name': 'Trillo',             'river': 'Tagus',           'lat_grid': 40.70833,   'lon_grid': -2.57499,   'station_nb': 13},
+    6226800: {'name': 'Tortosa',            'river': 'Ebro',            'lat_grid': 40.82500,   'lon_grid': 0.525007,   'station_nb': 14},
+    6217200: {'name': 'Arroyo Maria',       'river': 'Guadalquivir',    'lat_grid': 38.17905,   'lon_grid': -2.83594,   'station_nb': 15}, 
+    6116200: {'name': 'Pulo  Lobo',       'river': 'Guadiana',        'lat_grid': 37.803,     'lon_grid': -7.633,     'station_nb': 16},         
+    6216520: {'name': 'Villarubia',         'river': 'Guadiana',        'lat_grid': 39.125,     'lon_grid': -3.59073,   'station_nb': 17},      
+    6216530: {'name': 'La Cubeta',          'river': 'Guadiana',        'lat_grid': 38.975,     'lon_grid': -2.895,     'station_nb': 18}         
+}
+
 #display stations on map
 def stations_map_xy(x_values, y_values, title='Location of selected stations'):
     fig = plt.figure(figsize=(10, 10))
@@ -52,7 +73,7 @@ def stations_map_xy(x_values, y_values, title='Location of selected stations'):
     plt.scatter(x_values, y_values, s=30, marker='o')
     plt.title(title)
 
-def stations_map_dict(stations_dict, river_cond=None, name_cond=None, title='Location of selected stations', legend=True, extent=[-10, 2.5, 35, 45]):
+def stations_map_dict(stations_dict, river_cond=None, name_cond=None, title='Location of selected stations', legend=True, extent=[-10, 2.5, 35, 45], dams_df=None, dam_nb=50):
     """
     Plots the stations from a dictionary on a map, filtering by river or name if specified.
     Automatically assigns unique colors to each station based on the number of stations plotted.
@@ -78,17 +99,56 @@ def stations_map_dict(stations_dict, river_cond=None, name_cond=None, title='Loc
     colors = [cmap(i) for i in np.linspace(0, 1, num_stations)]
 
     # Setup map
-    fig = plt.figure(figsize=(8, 10))
+    fig = plt.figure(figsize=(10, 10))
     ax = plt.axes(projection=ccrs.PlateCarree())
     ax.coastlines()
     ax.add_feature(cfeature.RIVERS)
+    ax.add_feature(cfeature.LAND, color='lightyellow', edgecolor='black')
     ax.set_extent(extent)
 
+    # Overlay river names as labels
+    river_data = [
+        {"name": "Ebro", "lon": -2.4, "lat": 42.75},
+        {"name": "Douro", "lon": -4.2, "lat": 41.35},
+        {"name": "Tagus", "lon": -6.7, "lat": 39.5},
+        {"name": "Guadiana", "lon": -4.6, "lat": 38.7},
+        {"name": "Guadalquivir", "lon": -4.9, "lat": 37.45},
+        # {"name": "Cinca", "lon": 0.34, "lat": 41.52},
+        # {"name": "Segre", "lon": 0.41, "lat": 41.45},
+        # {"name": "Arlanza", "lon": -4.07, "lat": 42.08},
+        # {"name": "Frailes", "lon": -3.76, "lat": 37.25},
+        # {"name": "Giguela", "lon": -3.08, "lat": 39.64},
+    ]
+
+    # Plot river names
+    for river in river_data:
+        ax.text(
+            river["lon"], river["lat"], river["name"],
+            fontsize=14, 
+            # color=(180/255, 200/255, 250/255, 1),
+            color='steelblue',
+            weight="normal",
+            transform=ccrs.PlateCarree(),
+            ha="center", va="center",
+        )
+    
+    if dams_df is not None:
+        # Plot each dam
+        dams_df=dams_df.nlargest(dam_nb, 'capacity')
+        for _, row in dams_df.iterrows():
+            name=row.Name
+            # number=row.ID
+            label=name
+            plt.scatter(
+                row.lon, row.lat,
+                s=50, marker='D', color='silver'
+            )
+
     # Gridlines
-    gl = ax.gridlines(draw_labels=True, dms=True, x_inline=False, y_inline=False)
-    gl.ylocator = plt.MaxNLocator(5)
-    gl.right_labels = False
-    gl.top_labels = False
+    # gl = ax.gridlines(draw_labels=True, dms=True, x_inline=False, y_inline=False)
+    # gl.ylocator = plt.MaxNLocator(5)
+    # gl.right_labels = False
+    # gl.top_labels = False
 
     # Plot each station with its unique color
     for idx, (key, value) in enumerate(filtered_stations.items()):
@@ -97,19 +157,83 @@ def stations_map_dict(stations_dict, river_cond=None, name_cond=None, title='Loc
         label='{} ({})'.format(number, name)
         plt.scatter(
             value['lon_grid'], value['lat_grid'],
-            s=190, label=label, marker='o', color=colors[idx]
+            s=100, label=label, marker='o', color=colors[idx]
         )
         # Add text next to the point
         plt.text(
-            value['lon_grid'] + 0, value['lat_grid'] + 0.0,  # Adjust the offset for better placement
+            value['lon_grid'] + 0.11, value['lat_grid'] - 0.15,  # Adjust the offset for better placement
             str(number), fontsize=15, color='black'
         )
+
 
     # Add title and legend
     if title:
         plt.title(title)
     if legend:
-        plt.legend(loc='center left', bbox_to_anchor=(1, 0.5), borderaxespad=0.1)
+        plt.legend(loc='center left', bbox_to_anchor=(1, 0.5), borderaxespad=0.5)
+
+def dams_map(df, title='Location of selected dams', legend=False, extent=[-10, 2.5, 35, 45]):
+    """
+    Plots the dams from a dictionary on a ma
+    """
+
+    # Setup map
+    fig = plt.figure(figsize=(10, 10))
+    ax = plt.axes(projection=ccrs.PlateCarree())
+    ax.coastlines()
+    # ax.add_feature(cfeature.RIVERS)
+    ax.add_feature(cfeature.NaturalEarthFeature(
+        'physical', 'rivers_lake_centerlines', '10m'),
+        facecolor='none', edgecolor='blue', linewidth=0.5)
+    ax.set_extent(extent)
+
+    # Overlay river names as labels
+    river_data = [
+        {"name": "Ebro", "lon": -2.4, "lat": 42.75},
+        {"name": "Douro", "lon": -3.2, "lat": 41.35},
+        {"name": "Tagus", "lon": -6.7, "lat": 39.5},
+        {"name": "Guadiana", "lon": -5, "lat": 38.8},
+        {"name": "Guadalquivir", "lon": -4.9, "lat": 37.45},
+        # {"name": "Cinca", "lon": 0.34, "lat": 41.52},
+        # {"name": "Segre", "lon": 0.41, "lat": 41.45},
+        # {"name": "Arlanza", "lon": -4.07, "lat": 42.08},
+        # {"name": "Frailes", "lon": -3.76, "lat": 37.25},
+        # {"name": "Giguela", "lon": -3.08, "lat": 39.64},
+    ]
+
+    # Plot river names
+    for river in river_data:
+        ax.text(
+            river["lon"], river["lat"], river["name"],
+            fontsize=14, 
+            # color=(180/255, 200/255, 250/255, 1),
+            color='steelblue',
+            weight="normal",
+            transform=ccrs.PlateCarree(),
+            ha="center", va="center",
+        )
+
+    # Gridlines
+    # gl = ax.gridlines(draw_labels=True, dms=True, x_inline=False, y_inline=False)
+    # gl.ylocator = plt.MaxNLocator(5)
+    # gl.right_labels = False
+    # gl.top_labels = False
+
+    # Plot each dam
+    for _, row in df.iterrows():
+        name=row.Name
+        # number=row.ID
+        label=name
+        plt.scatter(
+            row.lon, row.lat,
+            s=50, label=label, marker='D', color='grey'
+        )
+
+    # Add title and legend
+    # if title:
+    #     plt.title(title)
+    # if legend:
+    #     plt.legend(loc='center left', bbox_to_anchor=(1, 0.5), borderaxespad=0.5)
 
 #discharge time plots
 def discharge_coord_ts(ds_list, coord_dict, var='hydrographs', figsize=(20, 10), year_min=2010, year_max=2022, title=None, ylabel=None, xlabel=None):
@@ -200,7 +324,7 @@ def sc_station(stations_ds, ax, station_id, name=None, var='runoff_mean', year_m
     plotvar=plotvar.groupby('time.month').mean(dim='time')
     nice_time_plot(plotvar,ax,label='obs', title=name, ylabel=ylabel, xlabel=xlabel, color='black')
     
-def sc_with_obs(ds_list, stations_ds, ax, station_id, station_data, var='hydrographs', year_min=2010, year_max=2022, ylabel=None, xlabel=None):
+def sc_with_obs(ds_list, stations_ds, ax, station_id, station_data, var='hydrographs', year_min=2010, year_max=2022, ylabel=None, xlabel=None, title_letter=None):
     ax.grid()
     ax.set_xticks(np.arange(1,13))
     ax.set_xticklabels(months_name_list)
@@ -218,7 +342,10 @@ def sc_with_obs(ds_list, stations_ds, ax, station_id, station_data, var='hydrogr
         name=station_data['name']
         nb=station_data['station_nb']
         river=station_data['river']
-        title= 'Station {} ({}, on river {})'.format(nb, name, river)
+        if title_letter:
+            title= '({}) Station {} ({}, on river {})'.format(title_letter, nb, name, river)
+        else:
+            title= 'Station {} ({}, on river {})'.format(nb, name, river)
         nice_time_plot(plotvar,ax,label=ds.name, title=title, color=ds.attrs['plot_color'], ylabel=ylabel, xlabel=xlabel)
 
 #metrics definition

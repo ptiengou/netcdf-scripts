@@ -18,6 +18,7 @@ from scipy.interpolate import griddata
 from matplotlib.markers import MarkerStyle
 import json
 from pprint import pprint
+import matplotlib.gridspec as gridspec
 
 
 plt.rcParams.update(
@@ -54,8 +55,9 @@ plt.rcParams.update(
             'scatter.marker': 'x',
             'lines.linewidth': 2.0,
         })
-rivers = cfeature.NaturalEarthFeature('physical', 'rivers_lake_centerlines', '10m',edgecolor=(0, 0, 0, 0.3), facecolor='none')
-
+# rivers = cfeature.NaturalEarthFeature('physical', 'rivers_lake_centerlines', '10m',edgecolor=(0, 0, 0, 0.3), facecolor='none')
+letters=['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
+         
 ### Manage colormaps ###
 def make_cmap_white(cmap, nbins=10):
     colors = plt.get_cmap(cmap, nbins)(np.linspace(0, 1, nbins))
@@ -125,6 +127,28 @@ def diff_dataset(ds1, ds2):
     ds_diff.attrs['name'] = 'Diff ({} - {})'.format(ds1.attrs['name'], ds2.attrs['name'])
     diff_mean = mean_dataset(ds_diff)
     return (ds_diff, diff_mean)
+
+def convert_mm_per_month_to_mm_per_day(data):
+    """
+    Convert xarray DataArray from mm/month to mm/day using the number of days in each month.
+    
+    Parameters:
+    - data: xarray.DataArray with time dimension (monthly data in mm/month)
+    
+    Returns:
+    - xarray.DataArray with data in mm/day
+    """
+    # Ensure the time dimension exists
+    if "time" not in data.dims:
+        raise ValueError("The data must have a 'time' dimension.")
+    
+    # Get the number of days in each month
+    days_in_month = data["time"].dt.days_in_month
+    
+    # Convert mm/month to mm/day
+    data_mm_per_day = data / days_in_month
+    
+    return data_mm_per_day
 
 def build_stats_df(datasets, variables):
     """
@@ -340,12 +364,12 @@ def polygon_area(ds, poly):
     print('Area : ',area.values, area.attrs['units'])
     return area.values
 
-def mask_area(ds, mask):
+def compute_mask_area(ds, mask):
     """
     Calculate the area of a mask
     """
     mask.attrs['name'] = 'mask'
-    masked_ds=apply_2Dmask_to_dataset(ds, mask)
+    masked_ds=apply_2Dmask_to_dataset(ds, mask).mean(dim='time')
     area = (masked_ds['cell_height'] * masked_ds['cell_width']).sum()
     area.attrs['units'] = 'm²'
     print('Area : ',area.values, area.attrs['units'])
@@ -401,6 +425,11 @@ def compute_grid_cell_width(dataset, lon_name="lon", lat_name="lat"):
     dataset["manual_area"] = dataset["cell_width"] * dataset["cell_height"]
     dataset["manual_area"].attrs["units"] = "m²"
     dataset["manual_area"].attrs["name"] = "Grid cell area"
+
+
+    dataset['cell_width']  = dataset['cell_width'].expand_dims(time=dataset.time)
+    dataset['cell_height'] = dataset['cell_height'].expand_dims(time=dataset.time)
+    dataset["manual_area"] = dataset["manual_area"].expand_dims(time=dataset.time)
 
     return dataset
 
@@ -466,19 +495,22 @@ def mask_edge_bottom(input_mask):
 ### time plots ###
 months_name_list=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
 
-def nice_time_plot(plotvar, ax, label=None, title=None, ylabel=None, xlabel=None, color=None):
-    plotvar.plot(ax=ax, label=label, c=color)
-    if not (title=='nope'):
+def nice_time_plot(plotvar, ax, label=None, title=None, ylabel=None, xlabel=None, color=None, vmin=None, vmax=None):
+    plotvar.plot(ax=ax, label=label, color=color)
+    if not (title=='off'):
         ax.set_title(title)
     ax.set_ylabel(ylabel)
     ax.set_xlabel(xlabel)
+    if vmin is not None:
+        if vmax is not None:
+            ax.set_ylim(vmin, vmax)
     ax.legend()
-    ax.grid()
+    # ax.grid()
 
 def time_series_ave(ds_list, var, ds_colors=False, figsize=(8.5, 5), year_min=2010, year_max=2022, title=None, ylabel=None, xlabel=None):
     fig = plt.figure(figsize=figsize)
     ax = plt.axes()
-    ax.grid()
+    # ax.grid()
     if not title:
         title = var + (' ({})'.format(ds_list[0][var].attrs['units']))
     for ds in ds_list:
@@ -491,7 +523,6 @@ def time_series_ave(ds_list, var, ds_colors=False, figsize=(8.5, 5), year_min=20
 def time_series_lonlat(ds_list, var, lon, lat, figsize=(8.5, 5), year_min=2010, year_max=2022, title=None, ylabel=None, xlabel=None):
     fig = plt.figure(figsize=figsize)
     ax = plt.axes()
-    ax.grid()
     if not title:
         title = var + (' at ({}°N,{}°W) ({})'.format(lon,lat,ds_list[0][var].attrs['units']))
     for ds in ds_list:
@@ -516,6 +547,66 @@ def seasonal_cycle_ave(ds_list, var, figsize=(8.5, 5), ds_colors=False, year_min
     ax.grid()
     ax.set_xticks(np.arange(1,13))
     ax.set_xticklabels(months_name_list)
+
+def seasonal_cycle_lonlat(ds_list, var, lon, lat, figsize=(8.5, 5), ds_colors=False, year_min=2010, year_max=2022, title=None, ylabel=None, xlabel=None):
+    fig = plt.figure(figsize=figsize)
+    ax = plt.axes()
+    if not title:
+        title = ds_list[0][var].attrs['long_name'] + (' at ({}°N,{}°W) ({})'.format(lon,lat,ds_list[0][var].attrs['units']))
+    for ds in ds_list:
+        ds = ds.where(ds['time.year'] >= year_min, drop=True).where(ds['time.year'] <= year_max, drop=True)
+        plotvar=ds[var].sel(lon=lon, lat=lat, method='nearest')
+        #print annual mean
+        mean=plotvar.mean(dim='time').values
+        print(ds.attrs['name'] + ' : %.2f' % mean + ' ({})'.format(ds[var].attrs['units']))
+        
+        monthly_plotvar=plotvar.groupby('time.month').mean(dim='time')
+        if ds_colors:
+            nice_time_plot(monthly_plotvar,ax,label=ds.name, color=ds.attrs["plot_color"], title=title, ylabel=ylabel, xlabel=xlabel)
+        else:
+            nice_time_plot(monthly_plotvar,ax,label=ds.name, title=title, ylabel=ylabel, xlabel=xlabel)
+    # ax.grid()
+    ax.set_xticks(np.arange(1,13))
+    ax.set_xticklabels(months_name_list)
+
+def time_series(plotvars, labels, colors=None, figsize=(8.5, 5), year_min=None, year_max=None, title=None, ylabel=None, xlabel=None, vmin=None, vmax=None):
+    fig = plt.figure(figsize=figsize)
+    ax = plt.axes()
+    i=j=0
+    for plotvar in plotvars:
+        label=labels[j]
+        j+=1
+        if year_min:
+            plotvar=plotvar.where(plotvar['time.year'] >= year_min, drop=True)
+        if year_max:
+            plotvar=plotvar.where(plotvar['time.year'] <= year_max, drop=True)
+        if colors:
+            color=colors[i]
+            i+=1
+            nice_time_plot(plotvar,ax,label=label, color=color, title=title, ylabel=ylabel, xlabel=xlabel, vmin=vmin, vmax=vmax)
+        else:
+            nice_time_plot(plotvar,ax,label=label, title=title, ylabel=ylabel, xlabel=xlabel,  vmin=vmin, vmax=vmax)
+
+def seasonal_cycle(plotvars, labels, colors=None, figsize=(8.5, 5), year_min=2010, year_max=2022, title=None, ylabel=None, xlabel=None, vmin=None, vmax=None):
+    fig = plt.figure(figsize=figsize)
+    ax = plt.axes()
+    i=j=0
+    for plotvar in plotvars:
+        label=labels[j]
+        j+=1
+        plotvar=plotvar.where(plotvar['time.year'] >= year_min, drop=True).where(plotvar['time.year'] <= year_max, drop=True)
+        mean=plotvar.mean(dim=['time']).values
+        print('{} : %.3f'.format(label) % mean) 
+        plotvar=plotvar.groupby('time.month').mean(dim='time')
+        if colors:
+            color=colors[i]
+            i+=1
+            nice_time_plot(plotvar,ax,label=label, color=color, title=title, ylabel=ylabel, xlabel=xlabel,  vmin=vmin, vmax=vmax)
+        else:
+            nice_time_plot(plotvar,ax,label=label, title=title, ylabel=ylabel, xlabel=xlabel, vmin=vmin, vmax=vmax)
+    ax.set_xticks(np.arange(1,13))
+    ax.set_xticklabels(months_name_list)
+    ax.grid()
 
 ###scatter plots###
 def scatter_vars(ds1, ds2, var1, var2, reg=False, plot_one=False, plot_m_one=False, title=None):
@@ -780,9 +871,9 @@ def scatter_annual_mean(ds1, ds2, var1, var2, reg=False, plot_one=False, title=N
         plt.plot([x.min(), x.max()], [x.min(), x.max()], color='black', linestyle='--', label='1:1')
         plt.legend()
     
-    plt.show()
+    # plt.show()
 
-def scatter_vars_seasons(ds1, ds2, var1, var2, reg=False, plot_one=False, plot_m_one=False, title=None, coloring=False, is_1D=False, seasons_list=None):
+def scatter_vars_seasons(ds1, ds2, var1, var2, reg=False, plot_one=False, plot_m_one=False, title=None, coloring=False, is_1D=False, seasons_list=None, xlabel=None, ylabel=None):
     """
     Plots a scatter plot of values of two variables in xarray datasets,
     with optional linear regression and season-based coloring.
@@ -809,11 +900,29 @@ def scatter_vars_seasons(ds1, ds2, var1, var2, reg=False, plot_one=False, plot_m
     - seasons_list: list of str, optional
         A list of seasons to include in the plot (e.g., ['DJF', 'MAM']). Default is None (all seasons included).
     """
+    # Filter ds depending on the seasons
+    # Define seasons
+    seasons = {
+        'DJF': [12, 1, 2],
+        'MAM': [3, 4, 5],
+        'JJA': [6, 7, 8],
+        'SON': [9, 10, 11],
+    }
+    months_list=[]
+    for season in seasons_list:
+        months_list+=seasons[season]
+    print('Months : {}'.format(months_list))
+    ds1=ds1.where(ds1['time.month'].isin(months_list), drop=True)
+    ds2=ds2.where(ds2['time.month'].isin(months_list), drop=True)
+
     # Flatten the grid data for scatter plotting
     x = ds1[var1].values.flatten()
     y = ds2[var2].values.flatten()
     time = ds1.time.values  # Assumes `time` is a dimension
 
+    plt.figure(figsize=(8, 6))
+    
+    #plotting data
     if coloring:
         # Expand time to match the grid dimensions, then flatten
         if is_1D:
@@ -821,14 +930,6 @@ def scatter_vars_seasons(ds1, ds2, var1, var2, reg=False, plot_one=False, plot_m
         else:
             time_expanded = np.broadcast_to(ds1.time.values[:, None, None], ds1[var1].shape).flatten()
         months = pd.to_datetime(time_expanded).month
-
-        # Define seasons
-        seasons = {
-            'DJF': [12, 1, 2],
-            'MAM': [3, 4, 5],
-            'JJA': [6, 7, 8],
-            'SON': [9, 10, 11],
-        }
 
         # Filter to include only selected seasons
         if seasons_list is not None:
@@ -844,7 +945,6 @@ def scatter_vars_seasons(ds1, ds2, var1, var2, reg=False, plot_one=False, plot_m
             'SON': "orange"  # Autumn
         }
 
-        plt.figure(figsize=(10, 7))
         for season in seasons_to_plot:
             if season not in seasons:
                 raise ValueError(f"Invalid season name: {season}. Must be one of {list(seasons.keys())}.")
@@ -853,11 +953,17 @@ def scatter_vars_seasons(ds1, ds2, var1, var2, reg=False, plot_one=False, plot_m
             plt.scatter(x[mask], y[mask], alpha=0.5, label=season, color=season_colors[season])
         plt.legend(title='Season')
     else:
-        plt.figure(figsize=(8, 6))
         plt.scatter(x, y, alpha=0.5)
 
-    plt.xlabel(f'{var1} ({ds1.attrs.get("name", "")})')
-    plt.ylabel(f'{var2} ({ds2.attrs.get("name", "")})')
+    #labels on axes and title
+    if xlabel:
+        plt.xlabel(xlabel)
+    else:
+        plt.xlabel(f'{var1} ({ds1.attrs.get("name", "")})')
+    if ylabel:
+        plt.ylabel(ylabel)
+    else:
+        plt.ylabel(f'{var2} ({ds2.attrs.get("name", "")})')
     plt.grid(True)
     if title:
         plt.title(title)
@@ -870,19 +976,104 @@ def scatter_vars_seasons(ds1, ds2, var1, var2, reg=False, plot_one=False, plot_m
         x = x[mask]
         y = y[mask]
         slope, intercept, r_value, _, _ = linregress(x, y)
-        plt.plot(x, slope * x + intercept, color='red', label=f'Regression: y = {slope:.2f}x + {intercept:.2f}\n$R^2$ = {r_value**2:.2f}')
+        plt.plot(x, slope * x + intercept, color='grey', label=f'y = {slope:.2f}x + {intercept:.2f} ($R^2$ = {r_value**2:.2f})')
         plt.legend()
 
     # Optional 1:1 and 1:-1 lines
     if plot_one:
-        plt.plot([x.min(), x.max()], [x.min(), x.max()], color='black', linestyle='--', label='1:1')
+        plt.plot([x.min(), x.max()], [x.min(), x.max()], color='grey', linestyle='--', label='1:1')
     if plot_m_one:
-        plt.plot([x.min(), x.max()], [-x.min(), -x.max()], color='black', linestyle='--', label='1:-1')
-
+        plt.plot([x.min(), x.max()], [-x.min(), -x.max()], color='grey', linestyle='--', label='1:-1')
     if plot_one or plot_m_one:
         plt.legend()
 
     plt.show()
+
+def scatter_vars_seasons_ax(ax, ds1, ds2, var1, var2, reg=False, plot_one=False, plot_m_one=False, title=None, coloring=False, is_1D=False, seasons_list=None, xlabel=None, ylabel=None):
+    # Filter ds depending on the seasons
+    # Define seasons
+    seasons = {
+        'DJF': [12, 1, 2],
+        'MAM': [3, 4, 5],
+        'JJA': [6, 7, 8],
+        'SON': [9, 10, 11],
+    }
+    months_list=[]
+    for season in seasons_list:
+        months_list+=seasons[season]
+    print('Months : {}'.format(months_list))
+    ds1=ds1.where(ds1['time.month'].isin(months_list), drop=True)
+    ds2=ds2.where(ds2['time.month'].isin(months_list), drop=True)
+
+    # Flatten the grid data for scatter plotting
+    x = ds1[var1].values.flatten()
+    y = ds2[var2].values.flatten()
+    time = ds1.time.values  # Assumes `time` is a dimension
+    
+    #plotting data
+    if coloring:
+        # Expand time to match the grid dimensions, then flatten
+        if is_1D:
+            time_expanded = np.broadcast_to(ds1.time.values[:], ds1[var1].shape).flatten()
+        else:
+            time_expanded = np.broadcast_to(ds1.time.values[:, None, None], ds1[var1].shape).flatten()
+        months = pd.to_datetime(time_expanded).month
+
+        # Filter to include only selected seasons
+        if seasons_list is not None:
+            seasons_to_plot = seasons_list
+        else:
+            seasons_to_plot = seasons.keys()  # Default: all seasons
+
+        # Assign fixed colors for all seasons
+        season_colors = {
+            'DJF': "blue",  # Winter
+            'MAM': "green",  # Spring
+            'JJA': "red",    # Summer
+            'SON': "orange"  # Autumn
+        }
+
+        for season in seasons_to_plot:
+            if season not in seasons:
+                raise ValueError(f"Invalid season name: {season}. Must be one of {list(seasons.keys())}.")
+            months_in_season = seasons[season]
+            mask = np.isin(months, months_in_season)
+            ax.scatter(x[mask], y[mask], alpha=0.5, label=season, color=season_colors[season])
+        # ax.legend(title='Season')
+    else:
+        ax.scatter(x, y, alpha=0.5)
+
+    #labels on axes and title
+    if xlabel:
+        ax.set_xlabel(xlabel)
+    else:
+        ax.set_xlabel(f'{var1} ({ds1.attrs.get("name", "")})')
+    if ylabel:
+        ax.set_ylabel(ylabel)
+    else:
+        ax.set_ylabel(f'{var2} ({ds2.attrs.get("name", "")})')
+    plt.grid(True)
+    if title:
+        ax.set_title(title)
+    else:
+        ax.set_title('Monthly mean')
+
+    # Optional linear regression
+    if reg:
+        mask = ~np.isnan(x) & ~np.isnan(y)
+        x = x[mask]
+        y = y[mask]
+        slope, intercept, r_value, _, _ = linregress(x, y)
+        ax.plot(x, slope * x + intercept, color='grey', label=f'y = {slope:.2f}x + {intercept:.2f} ($R^2$ = {r_value**2:.2f})')
+        ax.legend()
+
+    # Optional 1:1 and 1:-1 lines
+    if plot_one:
+        ax.plot([x.min(), x.max()], [x.min(), x.max()], color='grey', linestyle='--', label='1:1')
+    if plot_m_one:
+        ax.plot([x.min(), x.max()], [-x.min(), -x.max()], color='grey', linestyle='--', label='1:-1')
+    if plot_one or plot_m_one:
+        ax.legend()
 
 def scatter_seasonal_mean(ds1, ds2, var1, var2, seasons_list=['DJF','MAM','JJA','SON'], plot_one=False, plot_m_one=False, reg=False):
     """
@@ -1146,7 +1337,7 @@ def moisture_flux_polygon(ds, polygon):
 def moisture_flux_mask(ds, mask):
     """
     Compute the moisture fluxes across the edges of a given mask.
-    The ds must be 2D (no time dimension), averaged either annually or seasonally (or monthly).
+    The ds must have cell width and height, and one time dimension only
     ds and mask must have a name attribute.
     """
     #create variables for integrated flux over edges
@@ -1184,13 +1375,175 @@ def moisture_flux_mask(ds, mask):
     v_input     = masked_vq_b.sum(dim=['lon','lat'])  # Moisture entering through the bottom
     v_output    = masked_vq_t.sum(dim=['lon','lat'])  # Moisture exiting through the top
 
-    # Calculate total moisture flux
-    total = u_input - u_output + v_input - v_output
     #make a dict with 4 components and total
     output_dict = {'u_input': u_input.values,
                    'u_output': u_output.values,
                    'v_input': v_input.values,
-                   'v_output': v_output.values,
-                   'total': total.values
+                   'v_output': v_output.values
                    }
     return(output_dict)
+
+def moisture_budget_mean_table(ds, mask, mask_area=None, recalc_width=False):
+    if recalc_width:
+        ds=compute_grid_cell_width(ds)
+    ds_mean = ds.mean(dim='time')
+    ds_mean.attrs['name'] = 'ds mean'
+    #add name to mask if it doesn't have one
+    if 'name' not in mask.attrs:
+        mask.attrs['name'] = 'mask'
+    #calculate mask area
+    if not mask_area:
+        print('Calculating mask area')
+        mask_area = compute_mask_area(ds, mask)
+    #calculate moisture fluxes
+    # print('Calculating moisture fluxes')
+    fluxes_dict = moisture_flux_mask(ds_mean, mask)
+    pprint(fluxes_dict)
+    #turn into pd df
+    # Transform the dictionary into a suitable format
+    fluxes_data = {key: [float(value)] for key, value in fluxes_dict.items()}
+    # Create a DataFrame
+    fluxes_df = pd.DataFrame(fluxes_data)
+    fluxes_df.index = [ds.attrs['name'] + ' (kg/s)']
+
+    # add row for mm/d
+    new_row = {key: (value / mask_area * 86400) for key, value in fluxes_dict.items()}
+    fluxes_df.loc[ds.attrs['name'] + ' (mm/d)'] = new_row
+
+    # compute inputs outputs and total
+    fluxes_df['inputs'] = fluxes_df['u_input'] + fluxes_df['v_input']
+    fluxes_df['outputs'] = fluxes_df['u_output'] + fluxes_df['v_output']
+    fluxes_df['total'] = fluxes_df['inputs'] - fluxes_df['outputs']
+    
+    # format numbers
+    fluxes_df = fluxes_df.applymap(lambda x: float(f"{x:.3g}"))
+
+    return(fluxes_df)
+
+def add_moisture_flux_to_ds(ds, mask, mask_area=None, recalc_width=False):
+    """
+    Compute the moisture fluxes across the edges of a given mask, on a dataset
+    Output is an xarray datsaet of moiture input, output and total over time
+    """
+    if recalc_width:
+        ds=compute_grid_cell_width(ds)
+    # compute mask area
+    if not mask_area:
+        print('Calculating mask area')
+        mask_area = compute_mask_area(ds, mask)
+
+    #compute moisture fluxes
+    ds['uq_integ'] = ds['uq'] * ds['cell_height']
+    ds['vq_integ'] = ds['vq'] * ds['cell_width']
+
+    #creat masks for edges
+    mask0=mask
+    mask_b=mask_edge_bottom(mask0)
+    mask_b.attrs['name']='mask_bottom'
+    mask_t=mask_edge_top(mask0)
+    mask_t.attrs['name']='mask_top'
+    mask_r=mask_edge_right(mask0)
+    mask_r.attrs['name']='mask_right'
+    mask_l=mask_edge_left(mask0)
+    mask_l.attrs['name']='mask_left'
+
+    #apply masks to dataset
+    masked_b = apply_2Dmask_to_dataset(ds, mask_b)
+    masked_t = apply_2Dmask_to_dataset(ds, mask_t)
+    masked_l = apply_2Dmask_to_dataset(ds, mask_l)
+    masked_r = apply_2Dmask_to_dataset(ds, mask_r)
+
+    #identify relevant masked variable for each edge
+    masked_vq_b = masked_b['vq_integ']
+    masked_vq_t = masked_t['vq_integ']
+    masked_uq_l = masked_l['uq_integ']
+    masked_uq_r = masked_r['uq_integ']
+
+    #calculate moisture fluxes on each edge
+    u_input     = masked_uq_l.sum(dim=['lon','lat'])  # Moisture entering through the left
+    u_output    = masked_uq_r.sum(dim=['lon','lat'])  # Moisture exiting through the right
+    v_input     = masked_vq_b.sum(dim=['lon','lat'])  # Moisture entering through the bottom
+    v_output    = masked_vq_t.sum(dim=['lon','lat'])  # Moisture exiting through the top
+
+    ds['q_input'] = (u_input + v_input) * 86400 / mask_area
+    ds['q_output'] = (u_output + v_output) * 86400 / mask_area
+    ds['q_total'] = ds['q_input'] - ds['q_output']
+    #add attribute units to 2 vars
+    ds['q_input'].attrs['units']  = 'mm/d'
+    ds['q_output'].attrs['units'] = 'mm/d'
+    ds['q_total'].attrs['units']  = 'mm/d'
+    return(ds)
+
+def add_moisture_divergence(ds, uq_var='uq', vq_var='vq', cell_width_var='cell_width', cell_height_var='cell_height'):  
+    """
+    Compute and add moisture divergence to the dataset.
+
+    Parameters:
+    ds (xr.Dataset): Input dataset with variables `uq`, `vq`, and `cell_width`.
+    uq_var (str): Name of the variable for zonal moisture flux. Default is 'uq'.
+    vq_var (str): Name of the variable for meridional moisture flux. Default is 'vq'.
+    cell_width_var (str): Name of the variable for grid cell width. Default is 'cell_width'.
+
+    Returns:
+    xr.Dataset: Dataset with added moisture divergence variable.
+    """
+    # Get variables
+    uq = ds[uq_var]
+    vq = ds[vq_var]
+    cell_width = ds[cell_width_var]
+    cell_height = ds[cell_height_var]
+
+    # Compute gradients
+    # dqdx = uq.differentiate('lon')# / cell_width 
+    # dqdy = vq.differentiate('lat')# / cell_height
+    forward_dx = uq.diff('lon', label='upper')
+    backward_dx = uq.diff('lon', label='lower')
+    dqdx = ( backward_dx + forward_dx.shift(lon=-1) ) / 2 / cell_width
+    dqdx = dqdx * 86400
+
+    forward_dy = vq.diff('lat', label='upper')
+    backward_dy = vq.diff('lat', label='lower')
+    dqdy = ( backward_dy + forward_dy.shift(lat=-1) ) / 2 / cell_height
+    dqdy = dqdy * 86400
+
+    # Compute divergence    
+
+    divergence = dqdx + dqdy
+    convergence = -divergence
+
+    # Add divergence to the dataset
+    ds['moisture_divergence'] = divergence
+    ds['moisture_divergence'].attrs = {
+        'units': 'mm/d',
+        'description': 'Moisture divergence computed from uq and vq',
+        'long_name': 'Moisture divergence'
+    }
+    ds['moisture_convergence'] = convergence
+    ds['moisture_convergence'].attrs = {
+        'units': 'mm/d',
+        'description': 'Moisture convergence computed from uq and vq',
+        'long_name': 'Moisture convergence'
+    }
+
+    return ds
+
+def plot_side_by_side_barplots(df):
+    """
+    Creates a figure with 3 side-by-side bar plots, one for each numeric column in the DataFrame.
+    Each plot has 4 bars, one for each row in the DataFrame.
+    """
+    categories = df.iloc[:, 0]  # First column (categorical labels)
+    values = df.iloc[:, 1:]     # Numeric columns
+
+    # Setting up the figure
+    fig, axes = plt.subplots(1, len(values.columns), figsize=(10, 5), sharey=True)
+    
+    for i, col in enumerate(values.columns):
+        axes[i].bar(categories, values[col], color=['lightgrey', 'green', 'blue','black' ])
+        axes[i].set_title(f'{col}', fontsize=14)
+        axes[i].set_xlabel('', fontsize=12)
+        axes[i].set_ylabel('mm y⁻¹' if i == 0 else '', fontsize=12)
+        axes[i].tick_params(axis='x', rotation=45)
+    
+    plt.tight_layout()
+    plt.show()

@@ -5,16 +5,18 @@ lon_max=4
 lat_min=35.5
 lat_max=44
 
-default_map_figsize = (8,4)
+default_map_figsize = (8.5,4)
 ### maps ###
 # plt.rcParams['hatch.linewidth'] = 6
 # plt.bar(0,2,hatch='//' , edgecolor = None)
 
-def nice_map(plotvar, ax, cmap=myvir, vmin=None, vmax=None, poly=None, sig_mask=None, hatch='//', sig_viz=6, clabel=None):
+def nice_map(plotvar, ax, cmap=myvir, vmin=None, vmax=None, poly=None, sig_mask=None, hatch='//', sig_viz=6, clabel=None, cbar_on=True, left_labels=True):
     ax.coastlines()
-    ax.add_feature(rivers)
+    # ax.add_feature(rivers)
+    ax.add_feature(cfeature.RIVERS)
     gl = ax.gridlines(draw_labels=True, dms=False, x_inline=False, y_inline=False, alpha=0.8)
     gl.right_labels = False
+    gl.left_labels = left_labels
     gl.top_labels = False
     gl.xlocator = plt.MaxNLocator(8)
     gl.ylocator = plt.MaxNLocator(9)
@@ -76,28 +78,20 @@ def nice_map(plotvar, ax, cmap=myvir, vmin=None, vmax=None, poly=None, sig_mask=
                     transform=ccrs.PlateCarree()
                 )
 
-    # colorbar
-    ##case with colormesh
-    # Determine the 'extend' parameter dynamically
-    # extend = "neither"  # Default: no arrows
-    # if vmax is not None and (plotvar > vmax).any():
-    #     extend = "max"  # Values exceed vmax
-    # if vmin is not None and (plotvar < vmin).any():
-    #     extend = "both" if extend == "max" else "min"  # Values exceed vmin or both
-    # cbar = plt.colorbar(mesh, ax=ax, orientation='vertical', pad=0.05, shrink=0.8, extend="both")
-    
-    ##case with plot method
-    cbar = plot_obj.colorbar
-    # cbar = plt.colorbar(plot_obj,ax=ax,shrink=0.8)
-    # cbar.shrink(0.8) 
-    cbar.set_label(clabel)
-    ticks = np.linspace(vmin if vmin is not None else plotvar.min().values, 
-                        vmax if vmax is not None else plotvar.max().values, 
-                        6)
-    cbar.set_ticks(ticks)
-    cbar.ax.yaxis.set_major_formatter(ticker.ScalarFormatter())
-    cbar.ax.yaxis.get_major_formatter().set_scientific(True)
-    cbar.ax.yaxis.get_major_formatter().set_powerlimits((-2, 4))
+    if cbar_on:
+        cbar = plot_obj.colorbar
+        # cbar = plt.colorbar(plot_obj,ax=ax,shrink=0.8)
+        # cbar.shrink(0.8) 
+        cbar.set_label(clabel)
+        ticks = np.linspace(vmin if vmin is not None else plotvar.min().values, 
+                            vmax if vmax is not None else plotvar.max().values, 
+                            6)
+        cbar.set_ticks(ticks)
+        cbar.ax.yaxis.set_major_formatter(ticker.ScalarFormatter())
+        cbar.ax.yaxis.get_major_formatter().set_scientific(True)
+        cbar.ax.yaxis.get_major_formatter().set_powerlimits((-2, 4))
+    else:
+        plot_obj.colorbar.remove()
 
     # Optional: plot polygon
     if poly:
@@ -132,7 +126,7 @@ def map_ave(ds, var, vmin=None, vmax=None, cmap=myvir, multiplier=1, figsize=def
         else:
             plt.title(var + ' (' + ds[var].attrs['units'] + ')')
 
-def map_diff_ave(ds1, ds2, var, vmin=None, vmax=None, cmap=emb, figsize=default_map_figsize, title=None, hex=False, hex_center=False,
+def map_diff_ave(ds1, ds2, var, vmin=None, vmax=None, cmap=emb, figsize=default_map_figsize, title=None, clabel=None, hex=False, hex_center=False,
                  sig=False, sig_method=0 , pvalue=0.05, hatch='//', sig_viz=6, check_norm=False):
     fig = plt.figure(figsize=figsize)
     ax = plt.axes(projection=ccrs.PlateCarree())
@@ -140,14 +134,16 @@ def map_diff_ave(ds1, ds2, var, vmin=None, vmax=None, cmap=emb, figsize=default_
 
     if sig:
         sig_mask = compute_sig_mask(ds1, ds2, var, check_norm=check_norm, method=sig_method, pvalue=pvalue)
-        nice_map(diff, ax, cmap=cmap, vmin=vmin, vmax=vmax, sig_mask=sig_mask, hatch=hatch, sig_viz=sig_viz)
+        nice_map(diff, ax, cmap=cmap, vmin=vmin, vmax=vmax, sig_mask=sig_mask, hatch=hatch, sig_viz=sig_viz, clabel=clabel)
 
     else:
         print('No significance mask applied')
-        nice_map(diff, ax, cmap=cmap, vmin=vmin, vmax=vmax)
+        nice_map(diff, ax, cmap=cmap, vmin=vmin, vmax=vmax, clabel=clabel)
     if hex:
         plot_hexagon(ax, show_center=hex_center)
-    if title:
+    if title=="off":
+        pass
+    elif title:
         plt.title(title)
     else:
         plt.title(var + ' difference (' + ds1.name + ' - ' + ds2.name + ', ' + ds1[var].attrs['units'] + ')')
@@ -282,15 +278,20 @@ def compute_kstest_pvalues(ds, var, pvalue):
     print('Number of non-significant cells for Kolmogorov-Smirnov (pvalue={}): {} ({:.2f}%)'.format(pvalue, non_sig_cellnb, percentage_non_sig))
     return p_values, percentage_non_sig
 
-def map_rel_diff_ave(ds1, ds2, var, vmin=None, vmax=None, cmap=emb, multiplier=1, figsize=default_map_figsize, hex=False, hex_center=False):
+def map_rel_diff_ave(ds1, ds2, var, vmin=None, vmax=None, cmap=emb, title=None, clabel=None, figsize=default_map_figsize, hex=False, hex_center=False):
     fig = plt.figure(figsize=figsize)
     ax = plt.axes(projection=ccrs.PlateCarree())
-    rel_diff = ((ds1[var]-ds2[var] + 1E-16) / (ds2[var] + 1E-16)).mean(dim='time') * 100
+    rel_diff = ((ds1[var]-ds2[var]).mean(dim='time') / (ds2[var].mean(dim='time'))) * 100
 
-    nice_map(rel_diff, ax, cmap=cmap, vmin=vmin, vmax=vmax)
+    nice_map(rel_diff, ax, cmap=cmap, vmin=vmin, vmax=vmax, clabel=clabel)
     if hex:
         plot_hexagon(ax, show_center=hex_center)
-    plt.title(var + ' relative difference (' + ds1.name + ' - ' + ds2.name + ' ; %)')
+    if title=="off":
+        pass
+    elif title:
+        plt.title(title)
+    else:
+        plt.title(var + ' relative difference (' + ds1.name + ' - ' + ds2.name + ' ; %)')
 
 def map_two_ds(ds1, ds2, var, vmin=None, vmax=None, cmap=reds, figsize=(15,6), hex=False, hex_center=False):
     fig, axs = plt.subplots(1, 2, figsize=figsize, subplot_kw={'projection': ccrs.PlateCarree()})

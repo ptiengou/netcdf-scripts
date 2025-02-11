@@ -128,6 +128,28 @@ def diff_dataset(ds1, ds2):
     diff_mean = mean_dataset(ds_diff)
     return (ds_diff, diff_mean)
 
+def filter_xarray_by_day(ds: xr.Dataset, day: str) -> xr.Dataset:
+    """
+    Filters an xarray Dataset to keep only data from the specified day.
+    
+    Parameters:
+        ds (xr.Dataset): Input dataset containing a time coordinate.
+        day (str): Date string in the format 'YYYY-MM-DD'.
+    
+    Returns:
+        xr.Dataset: Filtered dataset containing only data from the specified day,
+                    with all original attributes preserved.
+    """
+    day = str(day)  # Ensure it's a string
+    filtered_ds = ds.sel(time=slice(day, day))  # Select data for the specific day
+    
+    # Preserve attributes
+    filtered_ds.attrs = ds.attrs  # Preserve dataset attributes
+    for var in filtered_ds.data_vars:
+        filtered_ds[var].attrs = ds[var].attrs  # Preserve variable attributes
+    
+    return filtered_ds
+
 def convert_mm_per_month_to_mm_per_day(data):
     """
     Convert xarray DataArray from mm/month to mm/day using the number of days in each month.
@@ -483,6 +505,7 @@ def mask_edge(input_mask):
                              dim='direction').any(dim='direction')
     edge_mask = padded_mask & ~input_mask
     return edge_mask
+
 def mask_edge_right(input_mask):
     return input_mask.shift(lon=1, fill_value=False) & ~input_mask
 def mask_edge_left(input_mask):
@@ -1224,23 +1247,7 @@ def profile_reflevs(ds_list, var, figsize=(6,8), title=' vertical profile'):
         profile=[var200,var500,var700,var850,var0]
         ax.plot(profile, pressure, label=ds.name) 
     ax.legend()
-
-#plot a profile from variable with all pressure levels
-def profile_preslevs(ds_list, var, figsize=(6,8), preslevelmax=20, title=' vertical profile'):
-    fig = plt.figure(figsize=figsize)
-    ax = plt.axes()
-    ax.grid()
-    plt.gca().invert_yaxis()
-    ax.set_title(var + title)
-    ax.set_ylabel('Pressure (hPa)')
-    ax.set_xlabel(var + ' ({})'.format(ds_list[0][var].attrs['units']))
-    pressure=ds_list[0]['presnivs'][0:preslevelmax]/100 #select levels and convert from Pa to hPa
-    for ds in ds_list:
-        plotvar = ds[var].mean(dim=['time', 'lon', 'lat'])[0:preslevelmax]
-        ax.plot(plotvar, pressure, label=ds.name) 
-    ax.legend()
                      
-
 #moisture flux functions
 def moisture_flux_rectangle(ds, polygon):
     """

@@ -19,6 +19,7 @@ from matplotlib.markers import MarkerStyle
 import json
 from pprint import pprint
 import matplotlib.gridspec as gridspec
+from io import StringIO
 
 
 plt.rcParams.update(
@@ -106,6 +107,7 @@ def seasonnal_ds_list(ds):
     ds_list = [seasonnal_ds(ds, season) for season in seasons_list]
     return ds_list
 
+#temporal average
 def mean_dataset(ds):
     ds_mean = ds.mean(dim='time')
     ds_mean.attrs = ds.attrs
@@ -113,6 +115,7 @@ def mean_dataset(ds):
     # ds_mean.attrs['plot_color'] = ds.attrs['plot_color']
     return ds_mean
 
+#spatial average
 def aggr_dataset(ds):
     ds_aggr = ds.mean(dim='lon').mean(dim='lat')
     ds_aggr.attrs = ds.attrs
@@ -120,6 +123,7 @@ def aggr_dataset(ds):
     # ds_aggr.attrs['plot_color'] = ds.attrs['plot_color']
     return ds_aggr
 
+#diff between two ds
 def diff_dataset(ds1, ds2):
     ds_diff = ds1 - ds2
     for var in ds1.var():
@@ -128,6 +132,7 @@ def diff_dataset(ds1, ds2):
     diff_mean = mean_dataset(ds_diff)
     return (ds_diff, diff_mean)
 
+#filtering
 def filter_xarray_by_day(ds: xr.Dataset, day: str) -> xr.Dataset:
     """
     Filters an xarray Dataset to keep only data from the specified day.
@@ -148,6 +153,33 @@ def filter_xarray_by_day(ds: xr.Dataset, day: str) -> xr.Dataset:
     for var in filtered_ds.data_vars:
         filtered_ds[var].attrs = ds[var].attrs  # Preserve variable attributes
     
+    return filtered_ds
+
+def filter_xarray_by_timestamps(ds: xr.Dataset, start_time: str, end_time: str) -> xr.Dataset:
+    """
+    Filters an xarray Dataset to keep only data between the specified timestamps.
+
+    Parameters:
+        ds (xr.Dataset): Input dataset containing a time coordinate.
+        start_time (str): Start timestamp string in the format 'YYYY-MM-DD HH:MM:SS'.
+        end_time (str): End timestamp string in the format 'YYYY-MM-DD HH:MM:SS'.
+
+    Returns:
+        xr.Dataset: Filtered dataset containing only data between the specified timestamps,
+                    with all original attributes preserved.
+    """
+    # Ensure timestamps are strings
+    start_time = str(start_time)
+    end_time = str(end_time)
+
+    # Select data between the two timestamps
+    filtered_ds = ds.sel(time=slice(start_time, end_time))
+
+    # Preserve attributes
+    filtered_ds.attrs = ds.attrs  # Preserve dataset attributes
+    for var in filtered_ds.data_vars:
+        filtered_ds[var].attrs = ds[var].attrs  # Preserve variable attributes
+
     return filtered_ds
 
 def convert_mm_per_month_to_mm_per_day(data):
@@ -215,6 +247,103 @@ def build_stats_df(datasets, variables):
     df.columns = pd.MultiIndex.from_tuples(df.columns)
     
     return df
+
+#add wind variables from individual components
+def add_wind_speed(ds: xr.Dataset) -> xr.Dataset:
+    """
+    Calculate the wind speed from zonal and meridional wind components
+    and add it to the dataset.
+
+    Parameters:
+        ds (xr.Dataset): Input dataset containing 'vitu', 'vitv' variables.
+
+    Returns:
+        xr.Dataset: Updated dataset with the wind speed added as a new variable.
+    """
+    # Extract the wind components
+    vitu = ds['vitu']
+    vitv = ds['vitv']
+
+    # Calculate the wind speed as the Euclidean norm
+    wind_speed = np.sqrt(vitu**2 + vitv**2)
+
+    # Set attributes for the wind speed DataArray
+    wind_speed.attrs['long_name'] = 'Wind Speed'
+    wind_speed.attrs['units'] = 'm/s'
+
+    # Add the wind speed to the dataset
+    ds['wind_speed'] = wind_speed
+
+    return ds
+
+def add_wind_10m(ds: xr.Dataset) -> xr.Dataset:
+    """
+    Calculate the wind speed from zonal and meridional wind components
+    and add it to the dataset as well as direction
+
+    Parameters:
+        ds (xr.Dataset): Input dataset 
+
+    Returns:
+        xr.Dataset: Updated dataset with the wind speed added as a new variable.
+    """
+    # Extract the wind components
+    u = ds['u10m']
+    v = ds['v10m']
+
+    # Calculate the wind speed as the Euclidean norm
+    wind_speed_10m = np.sqrt(u**2 + v**2)
+
+    # Set attributes for the wind speed DataArray
+    wind_speed_10m.attrs['long_name'] = 'Wind speed at 10m'
+    wind_speed_10m.attrs['units'] = 'm/s'
+
+    # Add the wind speed to the dataset
+    ds['wind_speed_10m'] = wind_speed_10m
+
+    # Calculate the wind direction
+    wind_direction_10m = np.arctan2(u, v)  
+    # Calculate angle in radians
+    wind_direction_10m = np.degrees(wind_direction_10m)  # Convert to degrees
+    wind_direction_10m = (wind_direction_10m + 180) % 360  # Convert to meteorological convention (0° is north)
+
+    # Set attributes for the wind direction DataArray
+    wind_direction_10m.attrs['long_name'] = 'Wind direction at 10m'
+    wind_direction_10m.attrs['units'] = 'degrees'
+
+    # Add the wind direction to the dataset
+    ds['wind_direction_10m'] = wind_direction_10m
+
+    return ds
+
+def add_wind_direction(ds: xr.Dataset) -> xr.Dataset:
+    """
+    Calculate the wind direction from zonal and meridional wind components
+    and add it to the dataset.
+
+    Parameters:
+        ds (xr.Dataset): Input dataset containing 'vitu' and 'vitv' variables.
+
+    Returns:
+        xr.Dataset: Updated dataset with the wind direction added as a new variable.
+    """
+    # Extract the wind components
+    vitu = ds['vitu']
+    vitv = ds['vitv']
+
+    # Calculate the wind direction
+    wind_direction = np.arctan2(vitu, vitv)  # Calculate angle in radians
+    wind_direction = np.degrees(wind_direction)  # Convert to degrees
+    wind_direction = (wind_direction + 180) % 360  # Convert to meteorological convention (0° is north)
+
+    # Set attributes for the wind direction DataArray
+    wind_direction.attrs['long_name'] = 'Wind Direction'
+    wind_direction.attrs['units'] = 'degrees'
+
+    # Add the wind direction to the dataset
+    ds['wind_direction'] = wind_direction
+
+    return ds
 
 #restrict to square subdomain
 subdomain_spain={'lonmin':-9.5, 'lonmax':3.0, 'latmin':36.0, 'latmax':44.0}
@@ -518,8 +647,8 @@ def mask_edge_bottom(input_mask):
 ### time plots ###
 months_name_list=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
 
-def nice_time_plot(plotvar, ax, label=None, title=None, ylabel=None, xlabel=None, color=None, vmin=None, vmax=None):
-    plotvar.plot(ax=ax, label=label, color=color)
+def nice_time_plot(plotvar, ax, label=None, title=None, ylabel=None, xlabel=None, color=None, vmin=None, vmax=None, linestyle='-'):
+    plotvar.plot(ax=ax, label=label, color=color, linestyle=linestyle)
     if not (title=='off'):
         ax.set_title(title)
     ax.set_ylabel(ylabel)
@@ -530,18 +659,25 @@ def nice_time_plot(plotvar, ax, label=None, title=None, ylabel=None, xlabel=None
     ax.legend()
     # ax.grid()
 
-def time_series_ave(ds_list, var, ds_colors=False, figsize=(8.5, 5), year_min=2010, year_max=2022, title=None, ylabel=None, xlabel=None):
+def time_series_ave(ds_list, var, ds_colors=False, ds_linestyle=False, figsize=(8.5, 5), year_min=2010, year_max=2022, title=None, ylabel=None, xlabel=None, vmin=None, vmax=None):
     fig = plt.figure(figsize=figsize)
     ax = plt.axes()
     # ax.grid()
     if not title:
-        title = var + (' ({})'.format(ds_list[0][var].attrs['units']))
+        title = f"{var} ({ds_list[0][var].attrs['units']})"
+
     for ds in ds_list:
-        plotvar=ds[var].where(ds['time.year'] >= year_min, drop=True).where(ds['time.year'] <= year_max, drop=True).mean(dim=['lon','lat'])
-        if ds_colors:
-            nice_time_plot(plotvar,ax,label=ds.name, color=ds.attrs["plot_color"], title=title, ylabel=ylabel, xlabel=xlabel)
-        else:
-            nice_time_plot(plotvar,ax,label=ds.name, title=title, ylabel=ylabel, xlabel=xlabel)
+        # Filter the dataset by the specified year range
+        plotvar = ds[var].where(ds['time.year'] >= year_min, drop=True).where(ds['time.year'] <= year_max, drop=True)
+
+        # Check if 'lon' and 'lat' dimensions exist before calculating the mean
+        if 'lon' in plotvar.dims and 'lat' in plotvar.dims:
+            plotvar = plotvar.mean(dim=['lon', 'lat'])
+        
+        color=ds.attrs["plot_color"] if ds_colors else None
+        linestyle=ds.attrs["linestyle"] if ds_linestyle else '-'
+
+        nice_time_plot(plotvar, ax, label=ds.name, color=color, linestyle=linestyle, title=title, ylabel=ylabel, xlabel=xlabel, vmin=vmin, vmax=vmax)
 
 def time_series_lonlat(ds_list, var, lon, lat, figsize=(8.5, 5), year_min=2010, year_max=2022, title=None, ylabel=None, xlabel=None):
     fig = plt.figure(figsize=figsize)

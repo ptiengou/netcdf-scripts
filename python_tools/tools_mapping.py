@@ -319,17 +319,20 @@ def map_seasons(plotvar, vmin=None, vmax=None, cmap=myvir, figsize=(12,7), hex=F
             plot_hexagon(axs.flatten()[i], show_center=hex_center)
 
 ## quiver plots for transport ##
-def map_wind(ds, extra_var='wind speed', height='10m', vmin=None, vmax=None, figsize=default_map_figsize, cmap=reds, dist=6, scale=100):
-    fig = plt.figure(figsize=figsize)
-    ax = plt.axes(projection=ccrs.PlateCarree())
+def map_wind(ds, ax=None, extra_var='wind speed', extra_ds=None, height='10m', vmin=None, vmax=None, figsize=default_map_figsize, cmap=reds, dist=6, scale=100, clabel=None):
+    if ax==None:
+        fig = plt.figure(figsize=figsize)
+        ax = plt.axes(projection=ccrs.PlateCarree())
+    else:
+        ax=ax
     windvar_u=ds['u'+height].mean(dim='time')
     windvar_v=ds['v'+height].mean(dim='time')
     #show extra_var in background color
     if extra_var=='wind speed':
         plotvar = (windvar_u**2 + windvar_v**2 ) ** (1/2)
     else:
-        plotvar = ds[extra_var].mean(dim='time')
-    nice_map(plotvar, ax, cmap=cmap, vmin=vmin, vmax=vmax)
+        plotvar = extra_ds[extra_var].mean(dim='time')
+    nice_map(plotvar, ax, cmap=cmap, vmin=vmin, vmax=vmax, clabel=clabel)
 
     #plot wind vectors
     windx = windvar_u[::dist,::dist]
@@ -397,7 +400,34 @@ def map_moisture_transport(ds, extra_var='norm', figsize=default_map_figsize, cm
     quiverkey_scale = scale/10
     plt.quiverkey(quiver, X=0.95, Y=0.05, U=quiverkey_scale, label='{} kg/m/s'.format(quiverkey_scale), labelpos='S')
 
-    plt.title('Moisture transport ({})'.format(extra_var))
+    # plt.title('Moisture transport ({})'.format(extra_var))
+    plt.title('Moisture transport (kg/m/s)')
+
+def map_moisture_transport_diff(ds1, ds2, figsize=default_map_figsize, cmap=emb, vmin=None, vmax=None, dist=6, scale=100, poly=None):
+    fig = plt.figure(figsize=figsize)
+    ax = plt.axes(projection=ccrs.PlateCarree())
+    windvar_u1=ds1['uq'].mean(dim='time')
+    windvar_v1=ds1['vq'].mean(dim='time')
+    windvar_u2=ds2['uq'].mean(dim='time')
+    windvar_v2=ds2['vq'].mean(dim='time')
+    #show extra_var in background color
+    wind_speed1= (windvar_u1**2 + windvar_v1**2 ) ** (1/2)
+    wind_speed2= (windvar_u2**2 + windvar_v2**2 ) ** (1/2)
+    wind_speed_diff = wind_speed1 - wind_speed2
+    nice_map(wind_speed_diff, ax, cmap=cmap, vmin=vmin, vmax=vmax, poly=poly)
+
+    #plot wind vectors
+    windx = (windvar_u1-windvar_u2)[::dist,::dist]
+    windy = (windvar_v1-windvar_v2)[::dist,::dist]
+    longi=ds1['lon'][::dist]
+    lati=ds1['lat'][::dist]
+    quiver = ax.quiver(longi, lati, windx, windy, transform=ccrs.PlateCarree(), scale=scale)
+
+    quiverkey_scale = scale/10
+    plt.quiverkey(quiver, X=0.95, Y=0.05, U=quiverkey_scale, label='{} kg/m/s'.format(quiverkey_scale), labelpos='S')
+
+    # plt.title('Moisture transport ({})'.format(extra_var))
+    plt.title('Moisture transport change (kg/m/s)')
 
 #hexagons
 def _destination_point(lon, lat, bearing, distance_km):
@@ -439,8 +469,3 @@ def plot_hexagon(ax, center_lon=-3.7, center_lat=40.43, sim_radius_km=1250, nbp=
     #Show center if appropriate
     if show_center:
         ax.plot(center_lon, center_lat, marker='.', color='red', markersize=8)
-
-#native ICO grid
-
-def plot_ICO_grid(ax, lon, lat, color='black', linewidth=0.5):
-    return()

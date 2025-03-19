@@ -7,3 +7,6 @@ python_scripts/figures/
 figures/
 
 python_tools/aborella/UTIL/__pycache__/*
+python_tools/aborella/UTIL/__pycache__/
+python_tools/aborella/UTIL/__pycache__/xr_utils.cpython-312.pyc
+

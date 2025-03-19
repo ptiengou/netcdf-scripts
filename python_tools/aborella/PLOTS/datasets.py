@@ -335,7 +335,6 @@ def get_lmdz_average(vartype, varnames, simu, **bounds):
     return ds
 
 
-
 def get_era5_profile(variable, times_data, levs_data, lons_data, lats_data):
 
     if variable is None: return None, None

@@ -22,8 +22,6 @@ import matplotlib.gridspec as gridspec
 from io import StringIO
 import psyplot.project as psy
 
-
-
 plt.rcParams.update(
         {
             'figure.facecolor': 'white',
@@ -250,7 +248,7 @@ def build_stats_df(datasets, variables):
     
     return df
 
-#add wind variables from individual components
+#add variables from individual components
 def add_wind_speed(ds: xr.Dataset) -> xr.Dataset:
     """
     Calculate the wind speed from zonal and meridional wind components
@@ -344,6 +342,43 @@ def add_wind_direction(ds: xr.Dataset) -> xr.Dataset:
 
     # Add the wind direction to the dataset
     ds['wind_direction'] = wind_direction
+
+    return ds
+
+def add_relative_humidity(ds):
+    # Check if necessary variables exist
+    if not all(var in ds for var in ['temp', 'ovap', 'presnivs']):
+        raise ValueError("Dataset must contain 'temp', 'ovap' (specific humidity), and 'presnivs' (pressure levels).")
+
+    # Constants
+    Rd = 287.05  # Gas constant for dry air (J/(kg·K))
+    Rv = 461.5   # Gas constant for water vapor (J/(kg·K))
+    eps = Rd / Rv  # Ratio of gas constants
+
+    # Saturation vapor pressure (hPa) — temperature in Celsius
+    def saturation_vapor_pressure(temp):
+        return 6.112 * np.exp((17.67 * temp) / (temp + 243.5))
+
+    # Actual vapor pressure (hPa)
+    def actual_vapor_pressure(ovap, presnivs):
+        return (ovap * presnivs) / (eps + (1 - eps) * ovap)
+
+    # Extract variables
+    temp = ds['temp']  # Temperature in °C
+    ovap = ds['ovap']  # Specific humidity in kg/kg
+    presnivs = ds['presnivs']  # Pressure levels in hPa
+
+    # Compute saturation and actual vapor pressure
+    e_s = saturation_vapor_pressure(temp)
+    e = actual_vapor_pressure(ovap, presnivs)
+
+    # Calculate relative humidity (%)
+    rh = (e / e_s) * 100
+
+    # Add relative humidity to the dataset
+    ds['rh'] = rh
+    ds['rh'].attrs['units'] = '%'
+    ds['rh'].attrs['description'] = 'Relative Humidity based on temp, ovap, and presnivs'
 
     return ds
 
@@ -661,7 +696,7 @@ def nice_time_plot(plotvar, ax, label=None, title=None, ylabel=None, xlabel=None
     ax.legend()
     # ax.grid()
 
-def time_series_ave(ds_list, var, ds_colors=False, ds_linestyle=False, figsize=(8.5, 5), year_min=2010, year_max=2022, title=None, ylabel=None, xlabel=None, vmin=None, vmax=None):
+def time_series_ave(ds_list, var, ds_colors=False, ds_linestyle=False, figsize=(8., 4.5), year_min=2010, year_max=2022, title=None, ylabel=None, xlabel=None, vmin=None, vmax=None):
     fig = plt.figure(figsize=figsize)
     ax = plt.axes()
     # ax.grid()
@@ -681,7 +716,7 @@ def time_series_ave(ds_list, var, ds_colors=False, ds_linestyle=False, figsize=(
 
         nice_time_plot(plotvar, ax, label=ds.name, color=color, linestyle=linestyle, title=title, ylabel=ylabel, xlabel=xlabel, vmin=vmin, vmax=vmax)
 
-def time_series_lonlat(ds_list, var, lon, lat, figsize=(8.5, 5), year_min=2010, year_max=2022, title=None, ylabel=None, xlabel=None):
+def time_series_lonlat(ds_list, var, lon, lat, figsize=(7.5, 4), year_min=2010, year_max=2022, title=None, ylabel=None, xlabel=None):
     fig = plt.figure(figsize=figsize)
     ax = plt.axes()
     if not title:
@@ -691,7 +726,7 @@ def time_series_lonlat(ds_list, var, lon, lat, figsize=(8.5, 5), year_min=2010, 
         plotvar=plotvar.sel(lon=lon, lat=lat, method='nearest')
         nice_time_plot(plotvar,ax,label=ds.name, title=title, ylabel=ylabel, xlabel=xlabel)
 
-def seasonal_cycle_ave(ds_list, var, figsize=(8.5, 5), ds_colors=False, year_min=2010, year_max=2022, title=None, ylabel=None, xlabel=None):
+def seasonal_cycle_ave(ds_list, var, figsize=(7.5, 4), ds_colors=False, year_min=2010, year_max=2022, title=None, ylabel=None, xlabel=None):
     fig = plt.figure(figsize=figsize)
     ax = plt.axes()
     if not title:
@@ -709,7 +744,7 @@ def seasonal_cycle_ave(ds_list, var, figsize=(8.5, 5), ds_colors=False, year_min
     ax.set_xticks(np.arange(1,13))
     ax.set_xticklabels(months_name_list)
 
-def seasonal_cycle_lonlat(ds_list, var, lon, lat, figsize=(8.5, 5), ds_colors=False, year_min=2010, year_max=2022, title=None, ylabel=None, xlabel=None):
+def seasonal_cycle_lonlat(ds_list, var, lon, lat, figsize=(7.5, 4), ds_colors=False, year_min=2010, year_max=2022, title=None, ylabel=None, xlabel=None):
     fig = plt.figure(figsize=figsize)
     ax = plt.axes()
     if not title:
@@ -730,7 +765,7 @@ def seasonal_cycle_lonlat(ds_list, var, lon, lat, figsize=(8.5, 5), ds_colors=Fa
     ax.set_xticks(np.arange(1,13))
     ax.set_xticklabels(months_name_list)
 
-def time_series(plotvars, labels, colors=None, figsize=(8.5, 5), year_min=None, year_max=None, title=None, ylabel=None, xlabel=None, vmin=None, vmax=None):
+def time_series(plotvars, labels, colors=None, figsize=(7.5, 4), year_min=None, year_max=None, title=None, ylabel=None, xlabel=None, vmin=None, vmax=None):
     fig = plt.figure(figsize=figsize)
     ax = plt.axes()
     i=j=0
@@ -748,7 +783,7 @@ def time_series(plotvars, labels, colors=None, figsize=(8.5, 5), year_min=None, 
         else:
             nice_time_plot(plotvar,ax,label=label, title=title, ylabel=ylabel, xlabel=xlabel,  vmin=vmin, vmax=vmax)
 
-def seasonal_cycle(plotvars, labels, colors=None, figsize=(8.5, 5), year_min=2010, year_max=2022, title=None, ylabel=None, xlabel=None, vmin=None, vmax=None):
+def seasonal_cycle(plotvars, labels, colors=None, figsize=(7.5, 4), year_min=2010, year_max=2022, title=None, ylabel=None, xlabel=None, vmin=None, vmax=None):
     fig = plt.figure(figsize=figsize)
     ax = plt.axes()
     i=j=0

@@ -1,5 +1,33 @@
 from tools import *
 
+##DATASETS##
+
+def sel_closest(ds, lon, lat, r=None):
+    # from A. Borella
+    dist = haversine(ds.lat, ds.lon, lat, lon)
+    if r is None:
+        # sel the closest
+        dict_closest = dist.argmin(...)
+    else:
+        # sel all that are closer than r (in km)
+        dict_closest = dict(cell=(dist <= r * 1e3))
+
+    ds = ds.isel(**dict_closest)
+
+    return ds
+
+def haversine(lat1, lon1, lat2, lon2):
+    # from A. Borella
+    '''Computes the Haversine distance between two points in m'''
+    dlon_rad = np.deg2rad(lon2 - lon1)
+    lat1_rad = np.deg2rad(lat1)
+    lat2_rad = np.deg2rad(lat2)
+    arc = np.sin((lat2_rad - lat1_rad) / 2.)**2. + np.cos(lat1_rad) \
+            * np.cos(lat2_rad) * np.sin(dlon_rad / 2.)**2.
+    c = 2. * np.arcsin(np.sqrt(arc))
+    R_E = 6372800.0 #see http://rosettacode.org/wiki/Haversine_formula
+    return R_E * c
+
 ## MAPPING
 #
 def plot_ICO_from_netcdf(file, var, timestep=0, vmin=0.0, vmax=None, cmap=wet, 

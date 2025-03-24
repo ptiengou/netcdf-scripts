@@ -1,5 +1,19 @@
 from tools import *
 
+# times_correspondance={1.5: '01:30', 4.5: '04:30', 7.5: '07:30', 10.5: '10:30', 13.5: '13:30', 16.5: '16:30', 19.5: '19:30', 22.5: '22:30'}
+# times_correspondance={0.0: '00:00', 0.5: '00:30', 1.0: '01:00', 1.5: '01:30', 2.0: '02:00', 2.5: '02:30', 3.0: '03:00', 3.5: '03:30', 4.0: '04:00', 4.5: '04:30', 5.0: '05:00', 5.5: '05:30', 6.0: '06:00', 6.5: '06:30', 7.0: '07:00', 7.5: '07:30', 8.0: '08:00', 8.5: '08:30', 9.0: '09:00', 9.5: '09:30', 10.0: '10:00', 10.5: '10:30', 11.0: '11:00', 11.5: '11:30', 12.0: '12:00', 12.5: '12:30', 13.0: '13:00', 13.5: '13:30', 14.0: '14:00', 14.5: '14:30', 15.0: '15:00', 15.5: '15:30', 16.0: '16:00', 16.5: '16:30', 17.0: '17:00', 17.5: '17:30', 18.0: '18:00', 18.5: '18:30', 19.0: '19:00', 19.5: '19:30', 20.0: '20:00', 20.5: '20:30', 21.0: '21:00', 21.5: '21:30', 22.0: '22:00', 22.5: '22:30', 23.0: '23:00', 23.5: '23:30'}
+times_correspondance_1h={0.5: '00:00',1.5: '01:00',2.5: '02:00',3.5: '03:00',4.5: '04:00',5.5: '05:00',6.5: '06:00',7.5: '07:00',8.5: '08:00',9.5: '09:00',10.5: '10:00',11.5: '11:00',12.5: '12:00',13.5: '13:00',14.5: '14:00',15.5: '15:00',16.5: '16:00',17.5: '17:00',18.5: '18:00',19.5: '19:00',20.5: '20:00',21.5: '21:00',22.5: '22:00',23.5: '23:00'}
+times_correspondance_30mn = {0.25: '00:00',0.75: '00:30',1.25: '01:00',1.75: '01:30',2.25: '02:00',2.75: '02:30',3.25: '03:00',3.75: '03:30',4.25: '04:00',4.75: '04:30',5.25: '05:00',5.75: '05:30',6.25: '06:00',6.75: '06:30',7.25: '07:00',7.75: '07:30',8.25: '08:00',8.75: '08:30',9.25: '09:00',9.75: '09:30',10.25: '10:00',10.75: '10:30',11.25: '11:00',11.75: '11:30',12.25: '12:00',12.75: '12:30',13.25: '13:00',13.75: '13:30',14.25: '14:00',14.75: '14:30',15.25: '15:00',15.75: '15:30',16.25: '16:00',16.75: '16:30',17.25: '17:00',17.75: '17:30',18.25: '18:00',18.75: '18:30',19.25: '19:00',19.75: '19:30',20.25: '20:00',20.75: '20:30',21.25: '21:00',21.75: '21:30',22.25: '22:00',22.75: '22:30',23.25: '23:00',23.75: '23:30'}
+nice_day_print={
+    '1507':'15 July 2021',
+    '1607':'16 July 2021',
+    '1707':'17 July 2021',
+    '2007':'20 July 2021',
+    '2107':'21 July 2021',
+    '2207':'22 July 2021',
+    '2707':'27 July 2021',
+}
+
 ## DIURNAL CYCLES ##
 #generic function
 def diurnal_cycle_ax(ax, title=None, ylabel=None, xlabel=None, vmin=None, vmax=None):
@@ -308,7 +322,7 @@ def profile_altitude_multipletimes_mean_singleplot(ds, var, times, altmin=0, alt
 
     plt.tight_layout()
 
-def profile_altitude_obs(ds_list, var, figsize=(6,8), ax=None, title=None, altmin=-0, altmax=2000, substract_gl=True, nbins=None, xmin=None, xmax=None):
+def profile_altitude_obs(ds_list, var, figsize=(6,8), ax=None, title=None, altmin=-0, altmax=2000, substract_gl=True, nbins=None, xmin=None, xmax=None, altsite=0):
     if ax is None:
         fig, ax = plt.subplots(figsize=figsize)
 
@@ -317,7 +331,7 @@ def profile_altitude_obs(ds_list, var, figsize=(6,8), ax=None, title=None, altmi
             ds['ground_level'] = ds['altitude'][0]
             altitude = ds['altitude'] - ds['ground_level']
         else:
-            altitude = ds['altitude']
+            altitude = ds['altitude'] + altsite
         plotvar = ds[var]
 
         x_var = plotvar.values
@@ -337,9 +351,10 @@ def profile_altitude_obs(ds_list, var, figsize=(6,8), ax=None, title=None, altmi
                              linestyle=ds.attrs.get('linestyle', None),
                              color=ds.attrs.get('plot_color', None))
         
-def profile_altitude_multipletimes_obs(ds_list, obs_dict, var, times, altmin=0, altmax=2000, xmin=None, xmax=None, substract_gl=True, simfreq='1h'):
+def profile_altitude_multipletimes_obs(ds_list, obs_dict, var, times, altmin=0, altmax=2000, xmin=None, xmax=None, substract_gl=True, simfreq='1h', title=None, altsite=0):
     n_ax = len(times)
     fig, axs = plt.subplots(1, n_ax, figsize=(5.5*n_ax, 6))
+    fig.suptitle(title)
     # Flatten axs only if it's an array (i.e., more than one subplot)
     axes = axs.flatten() if isinstance(axs, np.ndarray) else [axs]
     if simfreq=='1h':
@@ -373,6 +388,7 @@ def profile_altitude_multipletimes_obs(ds_list, obs_dict, var, times, altmin=0, 
                              altmax=altmax,
                              substract_gl=substract_gl,
                              xmin=xmin, 
-                             xmax=xmax
+                             xmax=xmax,
+                             altsite=altsite
                              )
         plt.tight_layout()

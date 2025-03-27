@@ -110,7 +110,11 @@ def map_plotvar(plotvar, vmin=None, vmax=None, cmap=myvir, figsize=default_map_f
 def map_ave(ds, var, vmin=None, vmax=None, cmap=myvir, multiplier=1, figsize=default_map_figsize, clabel=None, hex=False, hex_center=False, title=None, poly=None):
     fig = plt.figure(figsize=figsize)
     ax = plt.axes(projection=ccrs.PlateCarree())
-    plotvar = ds[var].mean(dim='time') * multiplier
+    #check if time dimension exists
+    if 'time' in ds[var].dims:
+        plotvar = ds[var].mean(dim='time') * multiplier
+    else:
+        plotvar = ds[var] * multiplier
     nice_map(plotvar, ax, cmap=cmap, vmin=vmin, vmax=vmax, poly=poly, clabel=clabel)
     if hex:
         plot_hexagon(ax, show_center=hex_center)

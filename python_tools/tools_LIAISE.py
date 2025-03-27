@@ -1,4 +1,5 @@
 from tools import *
+from tools_native import *
 
 ## CAMPAIGN INFO ##
 RS_days_list=['1507','1607','1707','2007','2107','2207','2707']
@@ -27,8 +28,54 @@ day6_end_time = '2021-07-23T00:00:00.000000000'
 day7_start_time = '2021-07-27T00:00:00.000000000'
 day7_end_time = '2021-07-28T00:00:00.000000000'
 
+#actual data from LIAISE db
+Cendrosa_Latitude=41.69336
+Cendrosa_Longitude=0.928538
+Cendrosa_altitude= 240
 
-## FILES ##
+ElsPlans_Latitude = 41.590111
+ElsPlans_Longitude = 1.029363
+ElsPlans_altitude = 334
+
+#Associated points on native grid
+Cendrosa_lon=0.755
+Cendrosa_lat=41.63
+ElsPlans_lon=0.996
+ElsPlans_lat=41.51
+
+## FUNCTIONS FOR LIAISE SITES AND SOP##
+def add_liaise_site_loc(ax=None):
+    if ax is not None:
+        ax.plot(Cendrosa_lon, Cendrosa_lat, 'go', markersize=10, transform=ccrs.Geodetic())
+        ax.plot(ElsPlans_lon, ElsPlans_lat, 'go', markersize=10, transform=ccrs.Geodetic())
+        ax.plot(Cendrosa_Longitude, Cendrosa_Latitude, 'ro', markersize=10, transform=ccrs.Geodetic())
+        ax.plot(ElsPlans_Longitude, ElsPlans_Latitude, 'ro', markersize=10, transform=ccrs.Geodetic())
+    else:
+        plt.plot(Cendrosa_lon, Cendrosa_lat, 'go', markersize=10, transform=ccrs.Geodetic())
+        plt.plot(ElsPlans_lon, ElsPlans_lat, 'go', markersize=10, transform=ccrs.Geodetic())
+        plt.plot(Cendrosa_Longitude, Cendrosa_Latitude, 'ro', markersize=10, transform=ccrs.Geodetic())
+        plt.plot(ElsPlans_Longitude, ElsPlans_Latitude, 'ro', markersize=10, transform=ccrs.Geodetic())
+
+def select_liaise_sites_sop(ds, name_suffix, linestyle_cen=None, linestyle_els=None, sop=True):
+    cen=sel_closest(ds, Cendrosa_lon, Cendrosa_lat)
+    els=sel_closest(ds, ElsPlans_lon, ElsPlans_lat)
+    cen.attrs['name']='La Cendrosa '+name_suffix
+    els.attrs['name']='Els Plans '+name_suffix
+    if linestyle_cen is not None and linestyle_els is not None:
+        cen.attrs['linestyle']=linestyle_cen
+        els.attrs['linestyle']=linestyle_els
+    else:
+        cen.attrs['linestyle']='-'
+        els.attrs['linestyle']='--'
+        
+    if sop:
+        sop_cen = filter_xarray_by_timestamps(cen, SOP_start_time, SOP_end_time)
+        sop_els = filter_xarray_by_timestamps(els, SOP_start_time, SOP_end_time)
+        return cen, els, sop_cen, sop_els
+    else:
+        return cen, els
+
+## OBS FILES ##
 ## RS Cendrosa
 cendrosa_files_1507=[
     "LIAISE_LA-CENDROSA_CNRM_RS-ascent_L2_20210715-0420_V2.nc",

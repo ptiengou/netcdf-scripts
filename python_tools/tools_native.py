@@ -74,7 +74,8 @@ def plot_ICO_from_netcdf(file, var, timestep=0, vmin=0.0, vmax=None, cmap=wet,
         bounds=bounds,
         map_extent=map_extent,
         ygrid=show_grid,
-        xgrid=show_grid
+        xgrid=show_grid,
+        # decode_times=False
     )
     # Resize the current figure after psyplot creates it
     fig = plt.gcf()  # Get the current figure used by psyplot

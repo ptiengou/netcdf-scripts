@@ -21,6 +21,7 @@ from pprint import pprint
 import matplotlib.gridspec as gridspec
 from io import StringIO
 import psyplot.project as psy
+import os
 
 plt.rcParams.update(
         {

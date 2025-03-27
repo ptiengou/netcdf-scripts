@@ -697,7 +697,7 @@ def nice_time_plot(plotvar, ax, label=None, title=None, ylabel=None, xlabel=None
     ax.legend()
     # ax.grid()
 
-def time_series_ave(ds_list, var, ds_colors=False, ds_linestyle=False, figsize=(8., 4.5), year_min=2010, year_max=2022, title=None, ylabel=None, xlabel=None, vmin=None, vmax=None):
+def time_series_ave(ds_list, var, ds_colors=False, ds_linestyle=False, figsize=(7.5, 4), year_min=2010, year_max=2022, title=None, ylabel=None, xlabel=None, vmin=None, vmax=None):
     fig = plt.figure(figsize=figsize)
     ax = plt.axes()
     # ax.grid()

@@ -8,6 +8,8 @@ import matplotlib.cm as cm
 from matplotlib.colors import ListedColormap
 from matplotlib.path import Path
 import matplotlib.ticker as ticker
+import matplotlib.colors as mcolors
+import matplotlib.patches as mpatches
 from cycler import cycler
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
@@ -682,10 +684,29 @@ def mask_edge_top(input_mask):
 def mask_edge_bottom(input_mask):
     return input_mask.shift(lat=-1, fill_value=False) & ~input_mask
 
+### mean ###
+def compute_mean(ds_list, var):
+    """
+    Compute the mean of a variable across multiple datasets.
+
+    Parameters:
+        ds_list (list): List of xarray datasets.
+        var (str): Variable name to compute the mean for.
+
+    Returns:
+        float: Mean value of the variable across all datasets.
+    """
+    mean_values = []
+    for ds in ds_list:
+        mean_value = ds[var].mean(dim=['lon', 'lat', 'time']).values
+        mean_values.append(mean_value)
+        print(ds.attrs['name'] + ' : %.5f' % mean_value + ' ({})'.format(ds[var].attrs['units']))
+    return (mean_values)
+
 ### time plots ###
 months_name_list=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
 
-def nice_time_plot(plotvar, ax, label=None, title=None, ylabel=None, xlabel=None, color=None, vmin=None, vmax=None, linestyle='-'):
+def nice_time_plot(plotvar, ax, label=None, title=None, ylabel=None, xlabel=None, color=None, vmin=None, vmax=None, xmin=None, xmax=None, linestyle='-'):
     plotvar.plot(ax=ax, label=label, color=color, linestyle=linestyle)
     if not (title=='off'):
         ax.set_title(title)
@@ -694,6 +715,9 @@ def nice_time_plot(plotvar, ax, label=None, title=None, ylabel=None, xlabel=None
     if vmin is not None:
         if vmax is not None:
             ax.set_ylim(vmin, vmax)
+    if xmin is not None:
+        if xmax is not None:
+            ax.set_xlim(xmin, xmax)
     ax.legend()
     # ax.grid()
 
@@ -735,7 +759,7 @@ def seasonal_cycle_ave(ds_list, var, figsize=(7.5, 4), ds_colors=False, year_min
     for ds in ds_list:
         ds = ds.where(ds['time.year'] >= year_min, drop=True).where(ds['time.year'] <= year_max, drop=True)
         mean=ds[var].mean(dim=['lon','lat', 'time']).values
-        print(ds.attrs['name'] + ' : %.2f' % mean + ' ({})'.format(ds[var].attrs['units']))
+        print(ds.attrs['name'] + ' : %.5f' % mean + ' ({})'.format(ds[var].attrs['units']))
         plotvar=ds[var].mean(dim=['lon', 'lat']).groupby('time.month').mean(dim='time')
         if ds_colors:
             nice_time_plot(plotvar,ax,label=ds.name, color=ds.attrs["plot_color"], title=title, ylabel=ylabel, xlabel=xlabel)
@@ -793,7 +817,7 @@ def seasonal_cycle(plotvars, labels, colors=None, figsize=(7.5, 4), year_min=201
         j+=1
         plotvar=plotvar.where(plotvar['time.year'] >= year_min, drop=True).where(plotvar['time.year'] <= year_max, drop=True)
         mean=plotvar.mean(dim=['time']).values
-        print('{} : %.3f'.format(label) % mean) 
+        print('{} : %.6f'.format(label) % mean) 
         plotvar=plotvar.groupby('time.month').mean(dim='time')
         if colors:
             color=colors[i]
@@ -1235,7 +1259,7 @@ def scatter_vars_seasons_ax(ax, ds1, ds2, var1, var2, reg=False, plot_one=False,
                 raise ValueError(f"Invalid season name: {season}. Must be one of {list(seasons.keys())}.")
             months_in_season = seasons[season]
             mask = np.isin(months, months_in_season)
-            ax.scatter(x[mask], y[mask], alpha=0.5, label=season, color=season_colors[season])
+            ax.scatter(x[mask], y[mask], alpha=0.5, label=f'{season} months', color=season_colors[season])
         # ax.legend(title='Season')
     else:
         ax.scatter(x, y, alpha=0.5)
@@ -1261,7 +1285,9 @@ def scatter_vars_seasons_ax(ax, ds1, ds2, var1, var2, reg=False, plot_one=False,
         x = x[mask]
         y = y[mask]
         slope, intercept, r_value, _, _ = linregress(x, y)
-        ax.plot(x, slope * x + intercept, color='grey', label=f'y = {slope:.2f}x + {intercept:.2f} ($R^2$ = {r_value**2:.2f})')
+        # ax.plot(x, slope * x + intercept, color='grey', label=f'y = {slope:.2f}x + {intercept:.2f} ($R^2$ = {r_value**2:.2f})')
+        #remove intercept
+        ax.plot(x, slope * x + intercept, color='grey', label=f'y = {slope:.2f}x ($R^2$ = {r_value**2:.2f})')
         ax.legend()
 
     # Optional 1:1 and 1:-1 lines
@@ -1708,7 +1734,7 @@ def add_moisture_divergence(ds, uq_var='uq', vq_var='vq', cell_width_var='cell_w
 
     return ds
 
-def plot_side_by_side_barplots(df):
+def plot_side_by_side_barplots(df, unit='mm y⁻¹', ax=None):
     """
     Creates a figure with 3 side-by-side bar plots, one for each numeric column in the DataFrame.
     Each plot has 4 bars, one for each row in the DataFrame.
@@ -1717,13 +1743,16 @@ def plot_side_by_side_barplots(df):
     values = df.iloc[:, 1:]     # Numeric columns
 
     # Setting up the figure
-    fig, axes = plt.subplots(1, len(values.columns), figsize=(10, 5), sharey=True)
-    
+    if ax==None:
+        fig, axes = plt.subplots(1, len(values.columns), figsize=(10, 5), sharey=True)
+    else:
+        axes = ax
+        
     for i, col in enumerate(values.columns):
         axes[i].bar(categories, values[col], color=['lightgrey', 'green', 'blue','black' ])
         axes[i].set_title(f'{col}', fontsize=14)
         axes[i].set_xlabel('', fontsize=12)
-        axes[i].set_ylabel('mm y⁻¹' if i == 0 else '', fontsize=12)
+        axes[i].set_ylabel(unit if i == 0 else '', fontsize=12)
         axes[i].tick_params(axis='x', rotation=45)
     
     plt.tight_layout()

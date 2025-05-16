@@ -39,24 +39,24 @@ stations_dict_filtered={
     }
 
 proper_stations_dict = {
-    6226400: {'name': 'Zaragoza',           'river': 'Ebro',            'lat_grid': 41.67499,   'lon_grid': -0.90832,   'station_nb': 1},
-    6212410: {'name': 'Tore',               'river': 'Douro',           'lat_grid': 41.50833,   'lon_grid': -5.47499,   'station_nb': 2},
-    6213700: {'name': 'Talavera',           'river': 'Tagus',           'lat_grid': 39.95833,   'lon_grid': -4.82499,   'station_nb': 3},
-    6216510: {'name': 'Azud de Badajoz',    'river': 'Guadiana',        'lat_grid': 38.86199,   'lon_grid': -7.01,      'station_nb': 4}, 
-    6217140: {'name': 'Mengibar',           'river': 'Guadalquivir',    'lat_grid': 37.98425,   'lon_grid': -3.79939,   'station_nb': 5},     
-    6226650: {'name': 'Fraga',              'river': 'Cinca',           'lat_grid': 41.52499,   'lon_grid': 0.341674,   'station_nb': 6},
-    6226600: {'name': 'Seros',              'river': 'Segre',           'lat_grid': 41.45833,   'lon_grid': 0.425007,   'station_nb': 7},
-    6212700: {'name': 'Peral De Arlanza',   'river': 'Arlanza',         'lat_grid': 42.07500,   'lon_grid': -4.07499,   'station_nb': 8},
-    6217700: {'name': 'Pinos Puente',       'river': 'Frailes',         'lat_grid': 37.27499,   'lon_grid': -3.75832,   'station_nb': 9},
-    6226300: {'name': 'Castejon',           'river': 'Ebro',            'lat_grid': 42.17499,   'lon_grid': -1.69165,   'station_nb': 10},
-    6216800: {'name': 'Quintanar',          'river': 'Giguela',         'lat_grid': 39.64166,   'lon_grid': -3.07499,   'station_nb': 11},
-    6213900: {'name': 'Peralejos',          'river': 'Tagus',           'lat_grid': 40.59166,   'lon_grid': -1.92499,   'station_nb': 12},
-    6213800: {'name': 'Trillo',             'river': 'Tagus',           'lat_grid': 40.70833,   'lon_grid': -2.57499,   'station_nb': 13},
-    6226800: {'name': 'Tortosa',            'river': 'Ebro',            'lat_grid': 40.82500,   'lon_grid': 0.525007,   'station_nb': 14},
-    6217200: {'name': 'Arroyo Maria',       'river': 'Guadalquivir',    'lat_grid': 38.17905,   'lon_grid': -2.83594,   'station_nb': 15}, 
-    6116200: {'name': 'Pulo  Lobo',       'river': 'Guadiana',        'lat_grid': 37.803,     'lon_grid': -7.633,     'station_nb': 16},         
-    6216520: {'name': 'Villarubia',         'river': 'Guadiana',        'lat_grid': 39.125,     'lon_grid': -3.59073,   'station_nb': 17},      
-    6216530: {'name': 'La Cubeta',          'river': 'Guadiana',        'lat_grid': 38.975,     'lon_grid': -2.895,     'station_nb': 18}         
+    6226800: {'name': 'Tortosa',            'river': 'Ebro',            'lat_grid': 40.82500,   'lon_grid': 0.525007,   'station_nb': 1},
+    6226400: {'name': 'Zaragoza',           'river': 'Ebro',            'lat_grid': 41.67499,   'lon_grid': -0.90832,   'station_nb': 2},
+    6226300: {'name': 'Castejon',           'river': 'Ebro',            'lat_grid': 42.17499,   'lon_grid': -1.69165,   'station_nb': 3},
+    6226600: {'name': 'Seros',              'river': 'Segre',           'lat_grid': 41.45833,   'lon_grid': 0.425007,   'station_nb': 4},
+    6226650: {'name': 'Fraga',              'river': 'Cinca',           'lat_grid': 41.52499,   'lon_grid': 0.341674,   'station_nb': 5},
+    6212410: {'name': 'Tore',               'river': 'Douro',           'lat_grid': 41.50833,   'lon_grid': -5.47499,   'station_nb': 6},
+    6212700: {'name': 'Peral De Arlanza',   'river': 'Arlanza',         'lat_grid': 42.07500,   'lon_grid': -4.07499,   'station_nb': 7},
+    6213700: {'name': 'Talavera',           'river': 'Tagus',           'lat_grid': 39.95833,   'lon_grid': -4.82499,   'station_nb': 8},
+    6213800: {'name': 'Trillo',             'river': 'Tagus',           'lat_grid': 40.70833,   'lon_grid': -2.57499,   'station_nb': 9},
+    6213900: {'name': 'Peralejos',          'river': 'Tagus',           'lat_grid': 40.59166,   'lon_grid': -1.92499,   'station_nb': 10},
+    6216510: {'name': 'Azud de Badajoz',    'river': 'Guadiana',        'lat_grid': 38.86199,   'lon_grid': -7.01,      'station_nb': 11}, 
+    6116200: {'name': 'Pulo do Lobo',       'river': 'Guadiana',        'lat_grid': 37.803,     'lon_grid': -7.633,     'station_nb': 12},         
+    6216530: {'name': 'La Cubeta',          'river': 'Guadiana',        'lat_grid': 38.975,     'lon_grid': -2.895,     'station_nb': 13},         
+    6216520: {'name': 'Villarubia',         'river': 'Guadiana',        'lat_grid': 39.125,     'lon_grid': -3.59073,   'station_nb': 14},      
+    6216800: {'name': 'Quintanar',          'river': 'Giguela',         'lat_grid': 39.64166,   'lon_grid': -3.07499,   'station_nb': 15},
+    6217140: {'name': 'Mengibar',           'river': 'Guadalquivir',    'lat_grid': 37.98425,   'lon_grid': -3.79939,   'station_nb': 16},     
+    6217200: {'name': 'Arroyo Maria',       'river': 'Guadalquivir',    'lat_grid': 38.17905,   'lon_grid': -2.83594,   'station_nb': 17}, 
+    6217700: {'name': 'Pinos Puente',       'river': 'Frailes',         'lat_grid': 37.27499,   'lon_grid': -3.75832,   'station_nb': 18},
 }
 
 #display stations on map
@@ -297,7 +297,7 @@ def ts_station(stations_ds, ax, station_id, name=None, var='runoff_mean', year_m
     plotvar=plotds[var].where(stations_ds['time.year'] >= year_min, drop=True).where(stations_ds['time.year'] <= year_max, drop=True)
     nice_time_plot(plotvar,ax,label='obs', title=name, ylabel=ylabel, xlabel=xlabel, color='black')
 
-def ts_with_obs(ds_list, stations_ds, ax, station_id, station_data, var='hydrographs', year_min=2010, year_max=2022, ylabel=None, xlabel=None):
+def ts_with_obs(ds_list, stations_ds, ax, station_id, station_data, var='hydrographs', year_min=2010, year_max=2022, ylabel=None, xlabel=None, plot_all_sim=False):
     ax.grid()
     station = stations_ds.sel(id=station_id)
     station = station.where(station['time.year'] >= year_min, drop=True).where(station['time.year'] <= year_max, drop=True)
@@ -308,7 +308,10 @@ def ts_with_obs(ds_list, stations_ds, ax, station_id, station_data, var='hydrogr
 
     for ds in ds_list:
         plotvar=ds[var].sel(lon=lon, lat=lat, method='nearest')
-        plotvar=plotvar.where(mask)
+        if not plot_all_sim:
+            plotvar=plotvar.where(mask)
+        else:
+            plotvar = plotvar.where(ds['time.year'] >= year_min, drop=True).where(ds['time.year'] <= year_max, drop=True)
         name=station_data['name']
         nb=station_data['station_nb']
         river=station_data['river']

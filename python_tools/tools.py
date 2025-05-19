@@ -706,7 +706,7 @@ def compute_mean(ds_list, var):
 ### time plots ###
 months_name_list=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
 
-def nice_time_plot(plotvar, ax, label=None, title=None, ylabel=None, xlabel=None, color=None, vmin=None, vmax=None, xmin=None, xmax=None, linestyle='-'):
+def nice_time_plot(plotvar, ax, label=None, title=None, ylabel=None, xlabel=None, color=None, vmin=None, vmax=None, xmin=None, xmax=None, linestyle='-', legend_out=False):
     plotvar.plot(ax=ax, label=label, color=color, linestyle=linestyle)
     if not (title=='off'):
         ax.set_title(title)
@@ -718,10 +718,13 @@ def nice_time_plot(plotvar, ax, label=None, title=None, ylabel=None, xlabel=None
     if xmin is not None:
         if xmax is not None:
             ax.set_xlim(xmin, xmax)
-    ax.legend()
+    if legend_out==True:
+        ax.legend(bbox_to_anchor=(1.05, 1))
+    elif legend_out==False:
+        ax.legend()
     # ax.grid()
 
-def time_series_ave(ds_list, var, ds_colors=False, ds_linestyle=False, figsize=(7.5, 4), year_min=2010, year_max=2022, title=None, ylabel=None, xlabel=None, vmin=None, vmax=None):
+def time_series_ave(ds_list, var, ds_colors=False, ds_linestyle=False, figsize=(7.5, 4), year_min=2010, year_max=2022, title=None, ylabel=None, xlabel=None, vmin=None, vmax=None, legend_out=False):
     fig = plt.figure(figsize=figsize)
     ax = plt.axes()
     # ax.grid()
@@ -739,7 +742,7 @@ def time_series_ave(ds_list, var, ds_colors=False, ds_linestyle=False, figsize=(
         color=ds.attrs["plot_color"] if ds_colors else None
         linestyle=ds.attrs["linestyle"] if ds_linestyle else '-'
 
-        nice_time_plot(plotvar, ax, label=ds.name, color=color, linestyle=linestyle, title=title, ylabel=ylabel, xlabel=xlabel, vmin=vmin, vmax=vmax)
+        nice_time_plot(plotvar, ax, label=ds.name, color=color, linestyle=linestyle, title=title, ylabel=ylabel, xlabel=xlabel, vmin=vmin, vmax=vmax, legend_out=legend_out)
 
 def time_series_lonlat(ds_list, var, lon, lat, figsize=(7.5, 4), year_min=2010, year_max=2022, title=None, ylabel=None, xlabel=None):
     fig = plt.figure(figsize=figsize)

@@ -16,7 +16,7 @@ nice_day_print={
 
 ## DIURNAL CYCLES ##
 #generic function
-def diurnal_cycle_ax(ax, title=None, ylabel=None, xlabel=None, vmin=None, vmax=None):
+def diurnal_cycle_ax(ax, title=None, ylabel=None, xlabel=None, vmin=None, vmax=None,legend_out=False):
     ax.grid()
     ax.set_xticks(np.arange(1, 24, 3))
     tick_positions = np.arange(1, 24, 2)
@@ -31,9 +31,13 @@ def diurnal_cycle_ax(ax, title=None, ylabel=None, xlabel=None, vmin=None, vmax=N
         ax.set_xlabel(xlabel)
     if vmin is not None and vmax is not None:
         ax.set_ylim(vmin, vmax)
+    if legend_out==True:
+        ax.legend(bbox_to_anchor=(1.05, 1))
+    elif legend_out==False:
+        ax.legend()
 
 #for one var, several datasets, averaged over lon and lat
-def diurnal_cycle_ave(ds_list, var, figsize=(6, 6), ds_colors=False, title=None, ylabel=None, xlabel=None, vmin=None, vmax=None):
+def diurnal_cycle_ave(ds_list, var, figsize=(6, 6), ds_colors=False, title=None, ylabel=None, xlabel=None, vmin=None, vmax=None, legend_out=False):
     fig, ax = plt.subplots(figsize=figsize)
     if not title:
         title = var + (' ({})'.format(ds_list[0][var].attrs['units']))
@@ -43,8 +47,8 @@ def diurnal_cycle_ave(ds_list, var, figsize=(6, 6), ds_colors=False, title=None,
             plotvar = ds[var].mean(dim=['lon', 'lat']).groupby('time_decimal').mean(dim='time')
         else:
             plotvar = ds[var].groupby('time_decimal').mean(dim='time')
-        nice_time_plot(plotvar, ax, label=ds.name, color=ds.attrs["plot_color"] if ds_colors else None)
-    diurnal_cycle_ax(ax, title=title, ylabel=ylabel, xlabel=xlabel, vmin=vmin, vmax=vmax)
+        nice_time_plot(plotvar, ax, label=ds.name, color=ds.attrs["plot_color"] if ds_colors else None, legend_out=legend_out)
+    diurnal_cycle_ax(ax, title=title, ylabel=ylabel, xlabel=xlabel, vmin=vmin, vmax=vmax, legend_out=legend_out)
 
 #for one var, several datasets, at a specific lon and lat
 def diurnal_cycle_lonlat(ds_list, var, lon, lat, figsize=(6, 6), ds_colors=False, title=None, ylabel=None, xlabel=None):

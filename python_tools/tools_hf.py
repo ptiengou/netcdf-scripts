@@ -37,7 +37,7 @@ def diurnal_cycle_ax(ax, title=None, ylabel=None, xlabel=None, vmin=None, vmax=N
         ax.legend()
 
 #for one var, several datasets, averaged over lon and lat
-def diurnal_cycle_ave(ds_list, var, figsize=(6, 6), ds_colors=False, title=None, ylabel=None, xlabel=None, vmin=None, vmax=None, legend_out=False):
+def diurnal_cycle_ave(ds_list, var, figsize=(6, 6), ds_colors=False, title=None, ylabel=None, xlabel=None, vmin=None, vmax=None, legend_out=False, ds_linestyle=False):
     fig, ax = plt.subplots(figsize=figsize)
     if not title:
         title = var + (' ({})'.format(ds_list[0][var].attrs['units']))
@@ -47,7 +47,8 @@ def diurnal_cycle_ave(ds_list, var, figsize=(6, 6), ds_colors=False, title=None,
             plotvar = ds[var].mean(dim=['lon', 'lat']).groupby('time_decimal').mean(dim='time')
         else:
             plotvar = ds[var].groupby('time_decimal').mean(dim='time')
-        nice_time_plot(plotvar, ax, label=ds.name, color=ds.attrs["plot_color"] if ds_colors else None, legend_out=legend_out)
+        linestyle=ds.attrs["linestyle"] if ds_linestyle else '-'
+        nice_time_plot(plotvar, ax, label=ds.name, color=ds.attrs["plot_color"] if ds_colors else None, linestyle=linestyle, legend_out=legend_out)
     diurnal_cycle_ax(ax, title=title, ylabel=ylabel, xlabel=xlabel, vmin=vmin, vmax=vmax, legend_out=legend_out)
 
 #for one var, several datasets, at a specific lon and lat
@@ -396,3 +397,6 @@ def profile_altitude_multipletimes_obs(ds_list, obs_dict, var, times, altmin=0, 
                              altsite=altsite
                              )
         plt.tight_layout()
+
+def profile_humidity(ds):
+    return()

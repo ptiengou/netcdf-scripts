@@ -385,6 +385,36 @@ def add_relative_humidity(ds):
 
     return ds
 
+def add_specific_humidity_2m(ds):
+    """
+    Calculate 2m specific humidity from the dataset and add it as a new variable.
+
+    Returns:
+        xarray.Dataset: Updated dataset with specific humidity added.
+    """
+    # Check if 'q' variable exists
+    if 'q2m' in ds:
+        raise ValueError("q2m already exists.")
+    t2m=ds['t2m'] - 273.15  # Convert temperature from Kelvin to Celsius
+    rh2m=ds['rh2m']/100
+    psol=ds['psol']  # Pressure in hPa
+
+    # Compute saturation vapor pressure (e_s) in hPa using Tetens formula
+    e_s = 6.112 * np.exp((17.67 * t2m) / (t2m + 243.5))
+
+    # Actual vapor pressure (e)
+    e = rh2m * e_s
+
+    # Specific humidity (q)
+    epsilon = 0.622
+    q2m = (epsilon * e) / (psol - (1 - epsilon) * e)
+
+    # Add specific humidity to the dataset
+    ds['q2m'] = q2m * 1000
+    ds['q2m'].attrs['units'] = 'g/kg'
+    ds['q2m'].attrs['description'] = 'Specific Humidity at 2m based on t2m, rh2m, and psol'
+    return ds
+
 #restrict to square subdomain
 subdomain_spain={'lonmin':-9.5, 'lonmax':3.0, 'latmin':36.0, 'latmax':44.0}
 subdomain_ebro={'lonmin':-2.0, 'lonmax':1.0, 'latmin':41.0, 'latmax':43.0}

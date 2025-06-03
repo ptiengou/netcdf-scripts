@@ -1,0 +1,21 @@
+name: lam1env
+channels:
+  - conda-forge
+dependencies:
+  - python
+  - jupyter
+  - ipykernel
+  - notebook
+  - numpy
+  - netcdf4
+  - xarray
+  - cartopy
+  - cycler
+  - dask
+  - matplotlib
+  - pandas
+  - scipy
+  - psyplot
+  - psy-maps
+  - pyhdf
+prefix: /home/ptiengou/.conda/envs/lam1env

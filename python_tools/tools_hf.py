@@ -370,14 +370,14 @@ def profile_altitude_multipletimes_obs(ds_list, obs_dict, var, times, altmin=0, 
         offset=0.25
     for i, time in enumerate(times):
         hour=times_correspondance[time]
-        title = f"{var} at {hour}"
+        subtitle = f"{var} at {hour}"
         
         # Filter datasets by the specified time and plot
         ds_list_tmp = [ds.where(ds['time_decimal']==time) for ds in ds_list]
         profile_altitude_local_mean(ds_list_tmp,
                                     var,
                                     ax=axes[i],
-                                    title=title,
+                                    title=subtitle,
                                     altmin=altmin,
                                     altmax=altmax,
                                     substract_gl=substract_gl,

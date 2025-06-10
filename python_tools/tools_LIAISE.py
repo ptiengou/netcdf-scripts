@@ -508,3 +508,157 @@ def RS_extract_full_day(file_list, times_list, site_dir, format_function):
     return full_day
 
 ## Masts
+
+def format_Cendrosa_obs(filename):
+    ds = xr.open_mfdataset(filename)
+    ds = ds.assign_coords(time_decimal=ds.time.dt.hour + ds.time.dt.minute / 60)
+    #add name and plot color
+    ds.attrs['name'] = 'Cendrosa_obs'
+    ds.attrs['plot_color'] = 'black'
+    ds.attrs['linestyle']='-'
+
+    rename_dict = {
+        #lmdz vars
+        'ta_2':'t2m',
+        'shf_1':'sens',
+        'lhf_1':'flat',
+        'hur_2':'rh2m',
+        'hus_2':'q2m',
+        'ws_2':'wind_speed_10m',
+        'wd_2':'wind_direction_10m',
+        'pa':'psol',
+        'swup':'SWupSFC',
+        'lwup':'LWupSFC',
+        'swd':'SWdnSFC',
+        'lwd':'LWdnSFC',
+        'rain_cumul':'precip',
+
+        'ta_3':'t10m',
+        'ta_4':'t25m',
+        'ta_5':'t50m',
+        'hur_3':'rh10m',
+        'hur_4':'rh25m',
+        'hur_5':'rh50m',
+        'hus_3':'q10m',
+        'hus_4':'q25m',
+        'hus_5':'q50m',
+        'shf_2':'sens25m',
+        'shf_3':'sens50m',
+        'lhf_2':'flat50m',
+        
+        #orc vars
+        'soil_temp_1':'soil_temp_06',
+        'soil_temp_2':'soil_temp_12',
+        'soil_heat_flux':'Qg',
+
+    }
+    ds = ds.rename(rename_dict)
+
+    #change temperatures to K
+    ds['t2m'] = ds['t2m'] + 273.15
+    ds['t2m'].attrs['units'] = 'K'
+    ds['t10m'] = ds['t10m'] + 273.15
+    ds['t10m'].attrs['units'] = 'K'
+    ds['t25m'] = ds['t25m'] + 273.15
+    ds['t25m'].attrs['units'] = 'K'
+    ds['t50m'] = ds['t50m'] + 273.15
+    ds['t50m'].attrs['units'] = 'K'
+    #change sign of Qg
+    ds['Qg'] = -ds['Qg']
+    #make netrad fluxes
+    ds['lwnet'] = ds['LWdnSFC'] - ds['LWupSFC']
+    ds['lwnet'].attrs['units'] = 'W/m2'
+    ds['swnet'] = ds['SWdnSFC'] - ds['SWupSFC']
+    ds['swnet'].attrs['units'] = 'W/m2'
+    #humidity in top10cm
+    alpha_SM=0.5
+    ds['mrsos']=(alpha_SM * ds['soil_moisture_1'] + (1-alpha_SM) * ds['soil_moisture_2']) * 100
+    ds['mrsos'].attrs['units'] = 'mm'
+
+    ds['soil_moisture_1'] = ds['soil_moisture_1'] * 100
+    ds['soil_moisture_2'] = ds['soil_moisture_2'] * 100
+    ds['soil_moisture_3'] = ds['soil_moisture_3'] * 100
+
+    # #precip in mm/d (initialy in mm/30mn)
+    # ds['precip'] = ds['precip'] * 2 * 24
+    # ds['precip'].attrs['units'] = 'mm/d'
+
+    return(ds)
+
+def format_ElsPlans_obs(ds, start_day):
+    #add name and plot color
+    ds.attrs['name'] = 'ElsPlans_obs'
+    ds.attrs['plot_color'] = 'black'
+    ds.attrs['linestyle']='--'
+
+    rename_dict = {
+        'HOUR_time':'time',
+        #lmdz vars
+        'PRES_subsoil':'psol',
+        'TEMP_2m':'t2m',
+        'RHUM_2mB':'rh2m',
+        'UTOT_10m':'wind_speed_10m',
+        'DIR_10m':'wind_direction_10m',
+        'SWUP_rad':'SWupSFC',
+        'LWUP_rad':'LWupSFC',
+        'SWDN_rad':'SWdnSFC',
+        'LWDN_rad':'LWdnSFC',
+        'RAIN_subsoil' : 'precip',
+        'TEMP_50m': 't50m',
+        'RHUM_50m': 'rh50m',
+        'TEMP_25m': 't25m',
+        'RHUM_25m': 'rh25m',
+        'TEMP_10m': 't10m',
+
+        #orc vars
+        'SFLXA_subsoil':'Qg',
+        'ST01_subsoil':'soil_temp_01',
+        'ST04_subsoil':'soil_temp_03',
+        'ST10_subsoil':'soil_temp_12',
+    }
+    ds = ds.rename(rename_dict)
+    # ds = ds.assign_coords(time_decimal=ds.time.dt.hour + ds.time.dt.minute / 60)
+
+    #convert time to hour:mn:s
+    ds['time'] = pd.to_datetime(start_day) + pd.to_timedelta(ds['time'], unit='h')
+
+    #add coord time_decimal for diurnal cycle
+    ds = ds.assign_coords(time_decimal=ds['time'].dt.hour + ds['time'].dt.minute / 60)
+
+    #remove all values of 1e11
+    ds = ds.where(ds != 1e11)
+    # change temperatures to K
+    ds['t2m'] = ds['t2m'] + 273.15
+    ds['t2m'].attrs['units'] = 'K'
+    ds['t10m'] = ds['t10m'] + 273.15
+    ds['t10m'].attrs['units'] = 'K'
+    ds['t25m'] = ds['t25m'] + 273.15
+    ds['t25m'].attrs['units'] = 'K'
+    ds['t50m'] = ds['t50m'] + 273.15
+    ds['t50m'].attrs['units'] = 'K'
+    #get turbulent fluxes
+    # Latent heat of vaporization of water in J/kg
+    lambda_v = 2.5e6
+    ds['flat'] = ds['WQ_2m'] * lambda_v
+    ds['flat'].attrs['units'] = 'W/m2'
+    # air density in kg/m3 and specific heat capacity of air in J/kg/K
+    rho=1.225
+    cp=1004.67
+    ds['sens'] = ds['WT_2m'] * rho * cp
+    ds['sens'].attrs['units'] = 'W/m2'
+    # make net rad fluxes
+    ds['lwnet'] = ds['LWdnSFC'] - ds['LWupSFC']
+    ds['lwnet'].attrs['units'] = 'W/m2'
+    ds['swnet'] = ds['SWdnSFC'] - ds['SWupSFC']
+    ds['swnet'].attrs['units'] = 'W/m2'
+    #change sign of Qg
+    ds['Qg'] = -ds['Qg']
+    #humidity in top10cm
+    # alpha_SM=0.5
+    # ds['mrsos']=(alpha_SM * ds['SM02_subsoil'] + (1-alpha_SM) * ds['SM10_subsoil']) * 10
+    ds['mrsos'] = ds['SM10_subsoil']
+    ds['mrsos'].attrs['units'] = 'mm'
+    #add specific humidity
+    ds = add_specific_humidity_2m(ds)
+
+    return(ds)

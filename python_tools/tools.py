@@ -503,6 +503,44 @@ ebro = {
             4 : {'lon':-2.0      , 'lat':41 },
 }
 
+#grid cells chosen in native ICO grid
+cendrosa_cell =     {
+    1: {'lon': 0.83035, 'lat': 41.72748},  # Top-Right
+    2: {'lon': 0.9057,  'lat': 41.63},     # Right
+    3: {'lon': 0.83035, 'lat': 41.53252},  # Bottom-Right
+    4: {'lon': 0.67965, 'lat': 41.53252},  # Bottom-Left
+    5: {'lon': 0.6043,  'lat': 41.63},     # Left
+    6: {'lon': 0.67965, 'lat': 41.72748},  # Top-Left
+}
+
+elsplans_cell = {
+    1: {'lon': 1.0711,  'lat': 41.60748},  # Top-Right
+    2: {'lon': 1.1462,  'lat': 41.51},     # Right
+    3: {'lon': 1.0711,  'lat': 41.41252},  # Bottom-Right
+    4: {'lon': 0.9209,  'lat': 41.41252},  # Bottom-Left
+    5: {'lon': 0.8458,  'lat': 41.51},     # Left
+    6: {'lon': 0.9209,  'lat': 41.60748},  # Top-Left
+}
+
+both_cells = {
+    1: {'lon': 0.83035, 'lat': 41.53252},  # Bottom-Right
+    2: {'lon': 0.67965, 'lat': 41.53252},  # Bottom-Left
+    3: {'lon': 0.6043,  'lat': 41.63},     # Left
+    4: {'lon': 0.67965, 'lat': 41.72748},  # Top-Left
+    5: {'lon': 0.83035, 'lat': 41.72748},  # Top-Right
+    6: {'lon': 0.9057,  'lat': 41.63},     # Right
+    7: {'lon': 0.83035, 'lat': 41.53252},  # Bottom-Right
+    8: {'lon': 0.8458,  'lat': 41.51},     # Left
+    9: {'lon': 0.9209,  'lat': 41.60748},  # Top-Left
+    10: {'lon': 1.0711,  'lat': 41.60748},  # Top-Right
+    12: {'lon': 1.1462,  'lat': 41.51},     # Right
+    13: {'lon': 1.0711,  'lat': 41.41252},  # Bottom-Right
+    14: {'lon': 0.9209,  'lat': 41.41252},  # Bottom-Left
+    15: {'lon': 0.8458,  'lat': 41.51},     # Left
+
+}
+
+
 def apply_2Dmask_to_dataset(dataset: xr.Dataset, mask: xr.DataArray, dsname=None) -> xr.Dataset:
     """
     Apply a 2D spatial mask (lat, lon) to an xarray.Dataset, preserving the structure

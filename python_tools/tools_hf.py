@@ -14,6 +14,59 @@ nice_day_print={
     '2707':'27 July 2021',
 }
 
+## DATASETS ##
+def format_lmdz_HF(filename, color, name):
+    ds = xr.open_mfdataset(filename)
+    ds = ds.rename({'time_counter':'time'})
+    ds = ds.assign_coords(time_decimal=ds.time.dt.hour + ds.time.dt.minute / 60)
+    ds.attrs['name'] = name
+    ds.attrs['plot_color']=color
+
+    ds['sens']=-ds['sens']
+    ds['flat']=-ds['flat']
+
+    ds['ground_level'] = ds['phis'] / 9.81
+    ds['ground_level'].attrs['units'] = 'm'
+
+    ds=add_wind_speed(ds)
+    ds=add_wind_direction(ds)
+    ds=add_wind_10m(ds)
+    # ds=add_relative_humidity(ds)
+
+    #make ovap unit g/kg
+    ds['ovap'] = ds['ovap']*1000
+    ds['ovap'].attrs['units'] = 'g/kg'
+    ds['ovap'].attrs['long_name'] = 'Specific humidity'
+    #same for q2m
+    ds['q2m'] = ds['q2m']*1000
+    ds['q2m'].attrs['units'] = 'g/kg'
+    #turn psol to hPa
+    ds['psol'] = ds['psol']/100
+    ds['psol'].attrs['units'] = 'hPa'
+    #make precip unit mm/30mn (like obs)
+    ds['precip']=ds['precip'] * 60 * 30
+    ds['precip'].attrs['long_name'] = 'Total precipitation'
+    ds['precip'].attrs['units']='mm (over 30mn)'
+
+    # ds['SWdn_diff'] = ds['SWdnSFCclr'] - ds['SWdnSFC']
+    # ds['SWdn_diff'].attrs['units'] = 'W/m2'
+
+    if 'rsds' in ds:
+        rename_dict2={'rsds':'SWdnSFC',
+                      'rlds':'LWdnSFC'}
+        ds=ds.rename(rename_dict2)
+        #add units
+        ds['SWdnSFC'].attrs['units'] = 'W/m2'
+        ds['LWdnSFC'].attrs['units'] = 'W/m2'
+
+    # ds = compute_grid_cell_width(ds)
+    # ds = add_moisture_divergence(ds)
+    ds['q_transport'] = ( ds['uq'] + ds['vq'] )
+    ds['q_transport'].attrs['units'] = '-'
+    ds['q_transport'].attrs['long_name'] = 'Moisture transport'
+    
+    return ds
+
 ## DIURNAL CYCLES ##
 #generic function
 def diurnal_cycle_ax(ax, title=None, ylabel=None, xlabel=None, vmin=None, vmax=None,legend_out=False):

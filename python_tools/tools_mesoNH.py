@@ -31,7 +31,7 @@ def subset_dataset_by_lon_lat_box(ds_input, lon_min, lon_max, lat_min, lat_max):
 
     return ds_subsetted
 
-def subset_dataset_by_polygon(ds_input, polygon_dict):
+def subset_dataset_by_polygon(ds_input, polygon_dict, name=None, plot_color=None):
     """
     Returns a new xarray Dataset containing only data points inside the
     specified polygon. Points outside the polygon will be set to NaN.
@@ -71,9 +71,41 @@ def subset_dataset_by_polygon(ds_input, polygon_dict):
     # 6. Apply the mask to the entire dataset
     # This will set values outside the polygon to NaN for all variables
     ds_subsetted = ds_input.where(xr_mask)
+    # Optionally, set the name of the dataset if provided
+    if name:
+        ds_subsetted.attrs['name'] = name
+
+    #add plot_color
+    if plot_color:
+        ds_subsetted.attrs['plot_color'] = plot_color
+
 
     return ds_subsetted
 
+def select_dataset_lon_lat(ds, lon, lat, name=None, plot_color=None):
+    """
+    Returns a new xarray Dataset containing only data points at the specified
+    longitude and latitude. This is for datasets where 'lon' and 'lat' are 2D
+    coordinates with (nj, ni) dimensions.
+
+    Args:
+        ds_input (xr.Dataset): The input xarray Dataset.
+        lon (float): Longitude to select.
+        lat (float): Latitude to select.
+
+    Returns:
+        xr.Dataset: A new dataset with data only at the specified lon/lat.
+    """
+    ni_idx, nj_idx = get_lonlat_index(ds, lon, lat)
+    ds_selected = ds.copy().isel(ni=ni_idx, nj=nj_idx)
+    # Optionally, set the name of the dataset if provided
+    if name:
+        ds_selected.attrs['name'] = name
+    #add plot_color
+    if plot_color:
+        ds_selected.attrs['plot_color'] = plot_color
+    return ds_selected
+    
 ## MAPS ##
 
 def nice_map_mesoNH(data_to_plot, vmin=None, vmax=None, cmap='viridis', 
@@ -175,6 +207,38 @@ def map_mesoNH_mean(ds, var, cmap='viridis', vmin=None, vmax=None, title=None, a
     title = title or f'{var} mean'
     label = f'{var} ({ds[var].attrs.get("units", "")})'
     nice_map_mesoNH(mean_ds, cmap=cmap, vmin=vmin, vmax=vmax, title=title, label=label, add_liaise=add_liaise, poly=poly)
+
+def map_mesoNH_mean_restrict(ds, var, cmap='viridis', vmin=None, vmax=None, title=None, add_liaise=False, poly=None,
+                             lon_min=None, lon_max=None, lat_min=None, lat_max=None):
+    """
+    Maps the mean of a variable from a MesoNH dataset, with limitations on the spatial extent.
+    """
+    data_to_plot_mean_selected = ds[var].mean(dim='time')
+
+    # Get the 2D lon/lat coordinates from the dataset (they have nj, ni dimensions)
+    lons_coord = ds['lon']
+    lats_coord = ds['lat']
+
+    # Apply spatial subsetting if bounds are provided
+    if lon_min is not None and lon_max is not None and \
+       lat_min is not None and lat_max is not None:
+
+        # Create a boolean mask based on the 2D lon/lat coordinates
+        # This mask will have dimensions (nj, ni)
+        spatial_mask = (lons_coord >= lon_min) & (lons_coord <= lon_max) & \
+                       (lats_coord >= lat_min) & (lats_coord <= lat_max)
+
+        # Apply the mask to the data. Values outside the region will become NaN.
+        data_to_plot = data_to_plot_mean_selected.where(spatial_mask)
+    else:
+        # If no subsetting is requested, use the time-selected data directly
+        data_to_plot = data_to_plot_mean_selected
+     
+    title = title or f'{var} mean'
+    label = f'{var} ({ds[var].attrs.get("units", "")})'
+    nice_map_mesoNH(data_to_plot, cmap=cmap, vmin=vmin, vmax=vmax, title=title, label=label, add_liaise=add_liaise, poly=poly)
+
+
 
 ## Time Series ##
 def time_series_ave_mesoNH(ds, var, figsize=(7.5, 4)):

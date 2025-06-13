@@ -504,41 +504,40 @@ ebro = {
 }
 
 #grid cells chosen in native ICO grid
-cendrosa_cell =     {
-    1: {'lon': 0.83035, 'lat': 41.72748},  # Top-Right
-    2: {'lon': 0.9057,  'lat': 41.63},     # Right
-    3: {'lon': 0.83035, 'lat': 41.53252},  # Bottom-Right
-    4: {'lon': 0.67965, 'lat': 41.53252},  # Bottom-Left
-    5: {'lon': 0.6043,  'lat': 41.63},     # Left
-    6: {'lon': 0.67965, 'lat': 41.72748},  # Top-Left
+cendrosa_cell = {
+    1: {'lon': 0.84583145, 'lat': 41.730026},  # Top-Right
+    2: {'lon': 0.67884094, 'lat': 41.736332},  # Top Left
+    3: {'lon': 0.5899751,  'lat': 41.632446},  # Left
+    4: {'lon': 0.66472054, 'lat': 41.523235},  # Bottom Left
+    5: {'lon': 0.83116126, 'lat': 41.516953},  # Bottom Right
+    6: {'lon': 0.9202557,  'lat': 41.62065},   # Right
 }
 
 elsplans_cell = {
-    1: {'lon': 1.0711,  'lat': 41.60748},  # Top-Right
-    2: {'lon': 1.1462,  'lat': 41.51},     # Right
-    3: {'lon': 1.0711,  'lat': 41.41252},  # Bottom-Right
-    4: {'lon': 0.9209,  'lat': 41.41252},  # Bottom-Left
-    5: {'lon': 0.8458,  'lat': 41.51},     # Left
-    6: {'lon': 0.9209,  'lat': 41.60748},  # Top-Left
+    1 : {'lon': 1.0870448, 'lat': 41.614002},  # Top-Right
+    2 : {'lon': 0.9202557, 'lat': 41.62065},   # Top Left
+    3 : {'lon': 0.83116126, 'lat': 41.516953},  # Left
+    4 : {'lon': 0.9053819, 'lat': 41.407516},   # Bottom Left
+    5 : {'lon': 1.0716242, 'lat': 41.40089},    # Bottom Right
+    6 : {'lon': 1.1609433, 'lat': 41.504402},   # Right
 }
 
 both_cells = {
-    1: {'lon': 0.83035, 'lat': 41.53252},  # Bottom-Right
-    2: {'lon': 0.67965, 'lat': 41.53252},  # Bottom-Left
-    3: {'lon': 0.6043,  'lat': 41.63},     # Left
-    4: {'lon': 0.67965, 'lat': 41.72748},  # Top-Left
-    5: {'lon': 0.83035, 'lat': 41.72748},  # Top-Right
-    6: {'lon': 0.9057,  'lat': 41.63},     # Right
-    7: {'lon': 0.83035, 'lat': 41.53252},  # Bottom-Right
-    8: {'lon': 0.8458,  'lat': 41.51},     # Left
-    9: {'lon': 0.9209,  'lat': 41.60748},  # Top-Left
-    10: {'lon': 1.0711,  'lat': 41.60748},  # Top-Right
-    12: {'lon': 1.1462,  'lat': 41.51},     # Right
-    13: {'lon': 1.0711,  'lat': 41.41252},  # Bottom-Right
-    14: {'lon': 0.9209,  'lat': 41.41252},  # Bottom-Left
-    15: {'lon': 0.8458,  'lat': 41.51},     # Left
-
-}
+        1: {"lon": 0.84583145, "lat": 41.730026},   # cendrosa 1
+        2: {"lon": 0.67884094, "lat": 41.736332},   # cendrosa 2
+        3: {"lon": 0.5899751,  "lat": 41.632446},   # cendrosa 3
+        4: {"lon": 0.66472054, "lat": 41.523235},   # cendrosa 4
+        5: {"lon": 0.83116126, "lat": 41.516953},   # shared (cendrosa 5, elsplans 3)
+        6: {"lon": 0.9202557,  "lat": 41.62065},    # shared (cendrosa 6, elsplans 2)
+        7:{"lon": 0.84583145, "lat": 41.730026},   # cendrosa 1
+        8:{"lon": 0.9202557,  "lat": 41.62065},    # shared (cendrosa 6, elsplans 2)
+        9: {'lon': 0.83116126, 'lat': 41.516953},
+        10:{'lon': 0.9053819, 'lat': 41.407516}, 
+        11:{'lon': 1.0716242, 'lat': 41.40089},  
+        12:{'lon': 1.1609433, 'lat': 41.504402}, 
+        13:{'lon': 1.0870448, 'lat': 41.614002}, 
+        14:{'lon': 0.9202557, 'lat': 41.62065},  
+    }
 
 
 def apply_2Dmask_to_dataset(dataset: xr.Dataset, mask: xr.DataArray, dsname=None) -> xr.Dataset:

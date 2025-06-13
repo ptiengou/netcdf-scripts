@@ -123,22 +123,25 @@ def nice_map_mesoNH(data_to_plot, vmin=None, vmax=None, cmap='viridis',
         vmax=vmax, 
         transform=ccrs.PlateCarree(),
         cmap=cmap,
-        cbar_kwargs={"label": label}
+        cbar_kwargs={"label": label},
     )
 
     ax.coastlines()
     ax.add_feature(cfeature.RIVERS, edgecolor='blue', linewidth=0.5)
 
-    gl=ax.gridlines(draw_labels=True, dms=False, x_inline=False, y_inline=False, alpha=0.8)
+    gl=ax.gridlines(draw_labels=True, dms=False, x_inline=False, y_inline=False, alpha=0.)
     gl.right_labels = False
-    # gl.left_labels = left_labels
+    gl.left_labels = False
     gl.top_labels = False
+    gl.bottom_labels = False
     gl.xlocator = plt.MaxNLocator(8)
     gl.ylocator = plt.MaxNLocator(9)
     if title:
         ax.set_title(title)
     if add_liaise:
         add_liaise_site_loc(ax=ax)
+    #remove gridlines
+    
 
     # Set the map extent to the *valid data's* lon/lat bounds after masking
     # This ensures the plot zooms into the visible data.
@@ -209,7 +212,7 @@ def map_mesoNH_mean(ds, var, cmap='viridis', vmin=None, vmax=None, title=None, a
     nice_map_mesoNH(mean_ds, cmap=cmap, vmin=vmin, vmax=vmax, title=title, label=label, add_liaise=add_liaise, poly=poly)
 
 def map_mesoNH_mean_restrict(ds, var, cmap='viridis', vmin=None, vmax=None, title=None, add_liaise=False, poly=None,
-                             lon_min=None, lon_max=None, lat_min=None, lat_max=None):
+                             lon_min=None, lon_max=None, lat_min=None, lat_max=None, label=None):
     """
     Maps the mean of a variable from a MesoNH dataset, with limitations on the spatial extent.
     """
@@ -235,7 +238,9 @@ def map_mesoNH_mean_restrict(ds, var, cmap='viridis', vmin=None, vmax=None, titl
         data_to_plot = data_to_plot_mean_selected
      
     title = title or f'{var} mean'
-    label = f'{var} ({ds[var].attrs.get("units", "")})'
+    if label is None:
+        # Use the variable's units from attributes if available
+        label = f'{var} ({ds[var].attrs.get("units", "")})'
     nice_map_mesoNH(data_to_plot, cmap=cmap, vmin=vmin, vmax=vmax, title=title, label=label, add_liaise=add_liaise, poly=poly)
 
 

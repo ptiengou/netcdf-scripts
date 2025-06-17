@@ -473,3 +473,48 @@ def plot_hexagon(ax, center_lon=-3.7, center_lat=40.43, sim_radius_km=1250, nbp=
     #Show center if appropriate
     if show_center:
         ax.plot(center_lon, center_lat, marker='.', color='red', markersize=8)
+
+#show subdomains defined by three masks (irrig intensity)
+def plot_subdomains_nice(ds, mask1, mask2, mask3, labels=('Region A', 'Region B', 'Region C'), ax=None, left_labels=True):
+    """
+    Uses `nice_map()` to plot subdomains defined by three masks.
+    Adds a legend (not colorbar) for the three regions.
+    
+    Parameters:
+        ds: xarray.Dataset with 'lat' and 'lon' coordinates
+        mask1, mask2, mask3: mask arrays (same shape as spatial dims)
+        labels: names for the three regions in the legend
+        ax: matplotlib axis (Cartopy) to draw on
+        left_labels: whether to show left-side grid labels (for subplots)
+    """
+    # Combine masks
+    combined = xr.where(mask1 == 1, 1, 0)
+    combined = xr.where(mask2 == 1, 2, combined)
+    combined = xr.where(mask3 == 1, 3, combined)
+    combined = combined.where(combined != 0)
+
+    #define a discrete colormap with 3 fixed colors
+    colors = ['#FDE725', 'orange', '#D73027'] 
+    cmap = mcolors.ListedColormap(colors)
+    bounds = [0.5, 1.5, 2.5, 3.5]
+    norm = mcolors.BoundaryNorm(bounds, cmap.N)
+
+    # Assign coords if missing (assumes ds has 'lat' and 'lon')
+    if not hasattr(combined, 'lat') or not hasattr(combined, 'lon'):
+        combined = combined.assign_coords(lat=ds['lat'], lon=ds['lon'])
+
+    nice_map(
+        plotvar=combined,
+        ax=ax,
+        cmap=cmap,
+        vmin=1,
+        vmax=3,
+        clabel='',  # Suppress colorbar label (colorbar will be removed anyway)
+        cbar_on=False,
+        left_labels=left_labels
+    )
+
+    #add legend with patches
+    legend_patches = [mpatches.Patch(color=colors[i], label=labels[i]) for i in range(3)]
+    ax.legend(handles=legend_patches, loc='lower left', bbox_to_anchor=(1.05, 0), title='Subdomains')
+    ax.set_title('(e) Irrigation subdomains')

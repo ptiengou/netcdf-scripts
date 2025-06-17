@@ -57,7 +57,7 @@ plt.rcParams.update(
                 ]
             ) * cycler(alpha=[0.8]),
             'scatter.marker': 'x',
-            'lines.linewidth': 2.0,
+            'lines.linewidth': 3.0,
         })
 # rivers = cfeature.NaturalEarthFeature('physical', 'rivers_lake_centerlines', '10m',edgecolor=(0, 0, 0, 0.3), facecolor='none')
 letters=['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
@@ -791,25 +791,43 @@ def nice_time_plot(plotvar, ax, label=None, title=None, ylabel=None, xlabel=None
         ax.legend()
     # ax.grid()
 
-def time_series_ave(ds_list, var, ds_colors=False, ds_linestyle=False, figsize=(7.5, 4), year_min=2010, year_max=2022, title=None, ylabel=None, xlabel=None, vmin=None, vmax=None, legend_out=False):
+def time_series_ave(ds_list, var, ds_colors=False, ds_linestyle=False, figsize=(7.5, 4), year_min=2010, year_max=2022, title=None, ylabel=None, xlabel=None, vmin=None, vmax=None, legend_out=False, envelope=False):
     fig = plt.figure(figsize=figsize)
     ax = plt.axes()
-    # ax.grid()
+
     if not title:
         title = f"{var} ({ds_list[0][var].attrs['units']})"
 
     for ds in ds_list:
-        # Filter the dataset by the specified year range
-        plotvar = ds[var].where(ds['time.year'] >= year_min, drop=True).where(ds['time.year'] <= year_max, drop=True)
+        # Filter dataset by year range
+        restrict_ds = ds[var].where(ds['time.year'] >= year_min, drop=True).where(ds['time.year'] <= year_max, drop=True)
 
-        # Check if 'lon' and 'lat' dimensions exist before calculating the mean
-        if 'lon' in plotvar.dims and 'lat' in plotvar.dims:
-            plotvar = plotvar.mean(dim=['lon', 'lat'])
-        
-        color=ds.attrs["plot_color"] if ds_colors else None
-        linestyle=ds.attrs["linestyle"] if ds_linestyle else '-'
+        if 'lon' in restrict_ds.dims and 'lat' in restrict_ds.dims:
+            plotvar = restrict_ds.mean(dim=['lon', 'lat'])
+            if envelope:
+                q25 = restrict_ds.quantile(0.25, dim=['lon', 'lat'])
+                q75 = restrict_ds.quantile(0.75, dim=['lon', 'lat'])
+        elif 'ni' in restrict_ds.dims and 'nj' in restrict_ds.dims:
+            plotvar = restrict_ds.mean(dim=['ni', 'nj'])
+            if envelope:
+                q25 = restrict_ds.quantile(0.25, dim=['ni', 'nj'])
+                q75 = restrict_ds.quantile(0.75, dim=['ni', 'nj'])
+        else:
+            plotvar = restrict_ds
 
-        nice_time_plot(plotvar, ax, label=ds.name, color=color, linestyle=linestyle, title=title, ylabel=ylabel, xlabel=xlabel, vmin=vmin, vmax=vmax, legend_out=legend_out)
+        color = ds.attrs["plot_color"] if ds_colors else None
+        linestyle = ds.attrs["linestyle"] if ds_linestyle else '-'         
+
+
+        # Plot the mean time series
+        nice_time_plot(plotvar, ax, label=ds.name, color=color, linestyle=linestyle, title=title,
+                       ylabel=ylabel, xlabel=xlabel, vmin=vmin, vmax=vmax, legend_out=legend_out)
+
+        # Plot the envelope
+        if envelope:
+            if 'show_envelope' in ds.attrs and ds.attrs['show_envelope']:
+                time_vals = plotvar['time'].values
+                ax.fill_between(time_vals, q25, q75, color=color, alpha=0.3)
 
 def time_series_lonlat(ds_list, var, lon, lat, figsize=(7.5, 4), year_min=2010, year_max=2022, title=None, ylabel=None, xlabel=None):
     fig = plt.figure(figsize=figsize)
@@ -1825,5 +1843,39 @@ def plot_side_by_side_barplots(df, unit='mm y⁻¹', ax=None):
         axes[i].set_ylabel(unit if i == 0 else '', fontsize=12)
         axes[i].tick_params(axis='x', rotation=45)
     
+    plt.tight_layout()
+    plt.show()
+
+def plot_all_barplots(df, unit, axes):
+    categories = df.iloc[:, 0]  # First column (e.g. names)
+    values = df.iloc[:, 1:]     # Numeric columns
+
+    for i, col in enumerate(values.columns):
+        axes[i].bar(categories, values[col], color=['lightgrey', 'green', 'blue', 'black'])
+        axes[i].set_title(f'{col}', fontsize=14)
+        axes[i].set_xlabel('')
+        axes[i].set_ylabel(unit if i == 0 else '', fontsize=12)
+        axes[i].tick_params(axis='x', rotation=45)
+        axes[i].set_ylim(0,0.23)
+
+def make_combined_figure9(df, ds, mask1, mask2, mask3, domain_labels=('Region A', 'Region B', 'Region C')):
+    """
+    Makes a 2-row figure: 4 barplots in row 1, 1 map in row 2.
+    """
+    # Create figure and define grid layout
+    fig = plt.figure(figsize=(14, 10))
+    gs = gridspec.GridSpec(nrows=2, ncols=4, height_ratios=[1, 1], hspace=0.3)  # More height for map and added hspace
+
+    # --- Row 1: Barplots (4 subplots) ---
+    bar_axes = [fig.add_subplot(gs[0, i]) for i in range(4)]
+
+    plot_all_barplots(df, unit='mm d⁻¹', axes=bar_axes)
+
+    # --- Row 2: Map (1 subplot spanning all columns) ---
+    ax_map = fig.add_subplot(gs[1, 1:3], projection=ccrs.PlateCarree())
+    plot_subdomains_nice(ds, mask1, mask2, mask3, labels=domain_labels, ax=ax_map, left_labels=True)
+
+    # Adjust layout to center the map
+    # plt.subplots_adjust(left=0.1, right=0.9, top=0.9, bottom=0.1)
     plt.tight_layout()
     plt.show()

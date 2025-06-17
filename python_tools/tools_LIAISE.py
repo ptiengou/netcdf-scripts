@@ -59,8 +59,8 @@ def add_liaise_site_loc(ax=None):
 def select_liaise_sites_sop(ds, name_suffix, linestyle_cen=None, linestyle_els=None, sop=True):
     cen=sel_closest(ds, Cendrosa_lon, Cendrosa_lat)
     els=sel_closest(ds, ElsPlans_lon, ElsPlans_lat)
-    cen.attrs['name']='La Cendrosa '+name_suffix
-    els.attrs['name']='Els Plans '+name_suffix
+    cen.attrs['name']='Cendrosa '+name_suffix
+    els.attrs['name']='ElsPlans '+name_suffix
     if linestyle_cen is not None and linestyle_els is not None:
         cen.attrs['linestyle']=linestyle_cen
         els.attrs['linestyle']=linestyle_els

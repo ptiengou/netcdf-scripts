@@ -65,6 +65,9 @@ def format_lmdz_HF(filename, color, name):
     ds['q_transport'].attrs['units'] = '-'
     ds['q_transport'].attrs['long_name'] = 'Moisture transport'
     
+    ds['t2m'].attrs['long_name'] = '2-m temperature'
+    ds['rh2m'].attrs['long_name'] = '2-m relative humidity'
+
     return ds
 
 ## DIURNAL CYCLES ##
@@ -90,7 +93,7 @@ def diurnal_cycle_ax(ax, title=None, ylabel=None, xlabel=None, vmin=None, vmax=N
         ax.legend()
 
 #for one var, several datasets, averaged over lon and lat
-def diurnal_cycle_ave(ds_list, var, figsize=(6, 6), ds_colors=False, title=None, ylabel=None, xlabel=None, vmin=None, vmax=None, legend_out=False, ds_linestyle=False):
+def diurnal_cycle_ave(ds_list, var, figsize=(6, 6), ds_colors=False, title=None, ylabel=None, xlabel=None, vmin=None, vmax=None, legend_out=False, ds_linestyle=False, envelope=False):
     fig, ax = plt.subplots(figsize=figsize)
     if not title:
         title = var + (' ({})'.format(ds_list[0][var].attrs['units']))
@@ -98,10 +101,22 @@ def diurnal_cycle_ave(ds_list, var, figsize=(6, 6), ds_colors=False, title=None,
         # Check if 'lon' and 'lat' are dimensions in the dataset
         if 'lon' in ds.dims and 'lat' in ds.dims:
             plotvar = ds[var].mean(dim=['lon', 'lat']).groupby('time_decimal').mean(dim='time')
+            if envelope:
+                q25 = ds[var].quantile(0.25, dim=['lon', 'lat']).groupby('time_decimal').mean(dim='time')
+                q75 = ds[var].quantile(0.75, dim=['lon', 'lat']).groupby('time_decimal').mean(dim='time')
+        elif 'ni' in ds.dims and 'nj' in ds.dims:
+            plotvar = ds[var].mean(dim=['ni', 'nj']).groupby('time_decimal').mean(dim='time')
+            if envelope:
+                q25 = ds[var].quantile(0.25, dim=['ni', 'nj']).groupby('time_decimal').mean(dim='time')
+                q75 = ds[var].quantile(0.75, dim=['ni', 'nj']).groupby('time_decimal').mean(dim='time')
         else:
             plotvar = ds[var].groupby('time_decimal').mean(dim='time')
+
         linestyle=ds.attrs["linestyle"] if ds_linestyle else '-'
         nice_time_plot(plotvar, ax, label=ds.name, color=ds.attrs["plot_color"] if ds_colors else None, linestyle=linestyle, legend_out=legend_out)
+        if envelope:
+            if 'show_envelope' in ds.attrs and ds.attrs['show_envelope']:
+                ax.fill_between(plotvar.time_decimal, q25, q75, alpha=0.2, color=ds.attrs["plot_color"] if ds_colors else None)
     diurnal_cycle_ax(ax, title=title, ylabel=ylabel, xlabel=xlabel, vmin=vmin, vmax=vmax, legend_out=legend_out)
 
 #for one var, several datasets, at a specific lon and lat
@@ -240,7 +255,7 @@ def profile_preslevs_local(ds_list, var, figsize=(6,8), preslevelmax=20, title=N
     ax.legend()
 
 #plot a profile from 3D variable with altitude as y_coord
-def profile_altitude_local_mean(ds_list, var, obs_ds_list=None, figsize=(6,8), ax=None, title=None, altmin=-0, altmax=2000, nbins=None, substract_gl=True, xmin=None, xmax=None, alpha=1.):
+def profile_altitude_local_mean(ds_list, var, obs_ds_list=None, figsize=(6,8), ax=None, title=None, altmin=-0, altmax=2000, nbins=None, substract_gl=True, xmin=None, xmax=None, alpha=1., xlabel=None, ylabel=None):
     if ax is None:
         fig, ax = plt.subplots(figsize=figsize)
 
@@ -270,15 +285,24 @@ def profile_altitude_local_mean(ds_list, var, obs_ds_list=None, figsize=(6,8), a
             plot_label = ds.name
         else:
             plot_label = None
-        if 'units' in ds[var].attrs:
-            xlabel = f"{var} ({ds[var].attrs['units']})"
-        else:
-            xlabel = var
+
+        #xlabel
+        if xlabel is None:
+            if 'units' in ds[var].attrs:
+                xlabel = f"{var} ({ds[var].attrs['units']})"
+            else:
+                xlabel = var
+        #ylabel
+        if ylabel is None:
+            ylabel = ('Height agl (m)' if substract_gl else 'Altitude (m)')
+        if ylabel is False:
+            ylabel = None
+        # Plot the profile
         profile_altitudes_ax(ax, x_var, y_coord, nbins=nbins, plot_label=plot_label, title=title,
                              xlabel=xlabel, 
                              ylabel=('Height agl (m)' if substract_gl else 'Altitude (m)'),
                              xmin=xmin, xmax=xmax, ymin=altmin, ymax=altmax,
-                             linestyle=ds.attrs.get('linestyle', None),
+                            #  linestyle=ds.attrs.get('linestyle', None),
                              color=ds.attrs.get('plot_color', None),
                              alpha=alpha)
         
@@ -409,9 +433,9 @@ def profile_altitude_obs(ds_list, var, figsize=(6,8), ax=None, title=None, altmi
                              linestyle=ds.attrs.get('linestyle', None),
                              color=ds.attrs.get('plot_color', None))
         
-def profile_altitude_multipletimes_obs(ds_list, obs_dict, var, times, altmin=0, altmax=2000, xmin=None, xmax=None, substract_gl=True, simfreq='1h', title=None, altsite=0):
+def profile_altitude_multipletimes_obs(ds_list, obs_dict, var, times, altmin=0, altmax=2000, xmin=None, xmax=None, substract_gl=True, simfreq='1h', title=None, altsite=0, xlabel=None, ylabel=None):
     n_ax = len(times)
-    fig, axs = plt.subplots(1, n_ax, figsize=(5.5*n_ax, 6))
+    fig, axs = plt.subplots(1, n_ax, figsize=(5*n_ax, 8))
     fig.suptitle(title)
     # Flatten axs only if it's an array (i.e., more than one subplot)
     axes = axs.flatten() if isinstance(axs, np.ndarray) else [axs]
@@ -425,18 +449,6 @@ def profile_altitude_multipletimes_obs(ds_list, obs_dict, var, times, altmin=0, 
         hour=times_correspondance[time]
         subtitle = f"{var} at {hour}"
         
-        # Filter datasets by the specified time and plot
-        ds_list_tmp = [ds.where(ds['time_decimal']==time) for ds in ds_list]
-        profile_altitude_local_mean(ds_list_tmp,
-                                    var,
-                                    ax=axes[i],
-                                    title=subtitle,
-                                    altmin=altmin,
-                                    altmax=altmax,
-                                    substract_gl=substract_gl,
-                                    xmin=xmin, 
-                                    xmax=xmax
-                                    )
         # Add observations
         obs_ds_list = [obs_dict[time-offset]]
         profile_altitude_obs(obs_ds_list,
@@ -449,6 +461,22 @@ def profile_altitude_multipletimes_obs(ds_list, obs_dict, var, times, altmin=0, 
                              xmax=xmax,
                              altsite=altsite
                              )
+        
+        # Filter datasets by the specified time and plot
+        ds_list_tmp = [ds.where(ds['time_decimal']==time) for ds in ds_list]
+        profile_altitude_local_mean(ds_list_tmp,
+                                    var,
+                                    ax=axes[i],
+                                    # title=subtitle,
+                                    altmin=altmin,
+                                    altmax=altmax,
+                                    substract_gl=substract_gl,
+                                    xmin=xmin, 
+                                    xmax=xmax,
+                                    xlabel=xlabel,
+                                    ylabel=ylabel if i == 0 else None,  # Only set ylabel for the first plot
+                                    )
+        
         plt.tight_layout()
 
 def profile_humidity(ds):

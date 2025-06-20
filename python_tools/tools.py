@@ -385,10 +385,10 @@ def add_relative_humidity(ds):
 
     return ds
 
-def add_specific_humidity_2m(ds):
+def add_specific_humidity_2m(ds, assume_psol=False):
     """
     Calculate 2m specific humidity from the dataset and add it as a new variable.
-
+    Needs t2m, rh2m and surface pressure psol
     Returns:
         xarray.Dataset: Updated dataset with specific humidity added.
     """
@@ -397,7 +397,11 @@ def add_specific_humidity_2m(ds):
         raise ValueError("q2m already exists.")
     t2m=ds['t2m'] - 273.15  # Convert temperature from Kelvin to Celsius
     rh2m=ds['rh2m']/100
-    psol=ds['psol']  # Pressure in hPa
+    if assume_psol:
+        #create dummy variable with 1013.25
+        psol = xr.full_like(t2m, 1013.25)
+    else:
+        psol=ds['psol']  # Pressure in hPa
 
     # Compute saturation vapor pressure (e_s) in hPa using Tetens formula
     e_s = 6.112 * np.exp((17.67 * t2m) / (t2m + 243.5))
@@ -413,6 +417,7 @@ def add_specific_humidity_2m(ds):
     ds['q2m'] = q2m * 1000
     ds['q2m'].attrs['units'] = 'g/kg'
     ds['q2m'].attrs['description'] = 'Specific Humidity at 2m based on t2m, rh2m, and psol'
+    ds['q2m'].attrs['long_name'] = 'Specific Humidity at 2m'
     return ds
 
 #restrict to square subdomain
@@ -1248,10 +1253,15 @@ def scatter_vars_seasons(ds1, ds2, var1, var2, reg=False, plot_one=False, plot_m
 
         # Assign fixed colors for all seasons
         season_colors = {
-            'DJF': "blue",  # Winter
-            'MAM': "green",  # Spring
-            'JJA': "red",    # Summer
-            'SON': "orange"  # Autumn
+            # 'DJF': "blue",  # Winter
+            # 'MAM': "green",  # Spring
+            # 'JJA': "red",    # Summer
+            # 'SON': "orange"  # Autumn
+            #colorblind-friendly colors
+            'DJF': "#0072B2",  # Winter
+            'MAM': "#009E73",  # Spring
+            'JJA': "#D55E00",  # Summer
+            'SON': "#CC79A7"   # Autumn
         }
 
         for season in seasons_to_plot:
@@ -1336,10 +1346,15 @@ def scatter_vars_seasons_ax(ax, ds1, ds2, var1, var2, reg=False, plot_one=False,
 
         # Assign fixed colors for all seasons
         season_colors = {
-            'DJF': "blue",  # Winter
-            'MAM': "green",  # Spring
-            'JJA': "red",    # Summer
-            'SON': "orange"  # Autumn
+            # 'DJF': "blue",  # Winter
+            # 'MAM': "green",  # Spring
+            # 'JJA': "red",    # Summer
+            # 'SON': "orange"  # Autumn
+            #colorblind-friendly colors
+            'DJF': "#0072B2",  # Winter
+            'MAM': "#009E73",  # Spring
+            'JJA': "#D55E00",  # Summer
+            'SON': "#CC79A7"   # Autumn
         }
 
         for season in seasons_to_plot:

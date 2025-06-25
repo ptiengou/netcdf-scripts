@@ -338,14 +338,16 @@ def profile_altitude_local_timestamp(ds_list, var, timestamp,  obs_ds_list=None,
     
 def profile_altitude_multipletimes_mean(ds_list, var, times, altmin=0, altmax=2000, xmin=None, xmax=None, substract_gl=True, simfreq='1h'):
     n_ax = len(times)
-    fig, axs = plt.subplots(1, n_ax, figsize=(5.5*n_ax, 6))
+    fig, axs = plt.subplots(1, n_ax, figsize=(4*n_ax, 7))
     # Flatten axs only if it's an array (i.e., more than one subplot)
     axes = axs.flatten() if isinstance(axs, np.ndarray) else [axs]
     for i, time in enumerate(times):
         if simfreq=='1h':
-            hour=times_correspondance_1h[time]
+            times_correspondance=times_correspondance_1h
+            offset=0.5
         elif simfreq=='30mn':
-            hour=times_correspondance_30mn[time]
+            times_correspondance=times_correspondance_30mn
+            offset=0.25
         hour=times_correspondance[time]
         title = f"{var} at {hour}"
         
@@ -435,7 +437,7 @@ def profile_altitude_obs(ds_list, var, figsize=(6,8), ax=None, title=None, altmi
         
 def profile_altitude_multipletimes_obs(ds_list, obs_dict, var, times, altmin=0, altmax=2000, xmin=None, xmax=None, substract_gl=True, simfreq='1h', title=None, altsite=0, xlabel=None, ylabel=None):
     n_ax = len(times)
-    fig, axs = plt.subplots(1, n_ax, figsize=(5*n_ax, 8))
+    fig, axs = plt.subplots(1, n_ax, figsize=(4*n_ax, 7))
     fig.suptitle(title)
     # Flatten axs only if it's an array (i.e., more than one subplot)
     axes = axs.flatten() if isinstance(axs, np.ndarray) else [axs]

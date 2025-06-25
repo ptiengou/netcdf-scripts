@@ -327,3 +327,42 @@ def bins_timestamp(ds, var, timestamp, nbins=10,
     plt.title(f'Distribution of {var} at {timestamp}')
     plt.grid()
     plt.show()
+
+def bins_hour(ds, var, hour, nbins=10,
+                   xmin=None, xmax=None, title=None, xlabel=None):
+    """
+    Make a histogram of the values of a variable at a given timestamp.
+    """
+    ds = ds.where(ds.time.dt.hour==hour).mean(dim='time')
+    values = ds[var].values.flatten()
+    values = values[~np.isnan(values)]
+
+
+    # Create bins
+    #take into account xmin and xmax
+    if xmin is None:
+        xmin = np.min(values)
+    if xmax is None:
+        xmax = np.max(values)
+    bins = np.linspace(xmin, xmax, nbins + 1)
+    
+    # Create histogram
+    hist, edges = np.histogram(values, bins=bins)
+    # Convert histogram to percentage
+    hist = hist / np.sum(hist) * 100.0
+    
+
+    # Plot histogram
+    plt.figure(figsize=(7.5, 4.5))
+    plt.bar(edges[:-1], hist, width=np.diff(edges), edgecolor='black', align='edge')
+    plt.xlabel(var)
+    plt.ylabel('Frequency (%)')
+    if not xlabel:
+        xlabel = f'{var} ({ds[var].attrs["units"]})'
+    plt.xlabel(xlabel)
+    if not title:
+        plt.title(f'Distribution of {var} at {hour}UTC (14-31/07/2021)')
+    else:
+        plt.title(title)
+    plt.grid()
+    plt.show()

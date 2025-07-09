@@ -63,9 +63,9 @@ plt.rcParams.update(
 letters=['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
          
 ### Manage colormaps ###
-def make_cmap_white(cmap, nbins=10):
+def make_cmap_white(cmap, nbins=10, n_white=0):
     colors = plt.get_cmap(cmap, nbins)(np.linspace(0, 1, nbins))
-    colors[0] = [1, 1, 1, 1]  # RGBA for white
+    colors[n_white] = [1, 1, 1, 1]  # RGBA for white
     cmapW = ListedColormap(colors[:nbins])
     return cmapW
 def add_central_white_cmap(cmap, nbins=11):
@@ -81,6 +81,7 @@ emb2_r = ListedColormap(mpl.colormaps['seismic_r'](np.linspace(0, 1, 10)))
 emb3   = ListedColormap(mpl.colormaps['Spectral_r'](np.linspace(0, 1, 10)))
 emb3_r = ListedColormap(mpl.colormaps['Spectral'](np.linspace(0, 1, 10)))
 emb_neutral = ListedColormap(mpl.colormaps['BrBG'](np.linspace(0, 1, 10)))
+emb_neutralW = make_cmap_white('BrBG', nbins=11, n_white=5)
 
 myvir = ListedColormap(mpl.colormaps['viridis'](np.linspace(0, 1, 10)))
 reds = ListedColormap(mpl.colormaps['Reds'](np.linspace(0, 1, 10)))
@@ -136,6 +137,30 @@ def diff_dataset(ds1, ds2):
     return (ds_diff, diff_mean)
 
 #filtering
+def remove_years_efficiently(ds_input, years_to_remove):
+    """
+    Removes specified years from an xarray Dataset or DataArray efficiently.
+    It removes the entire time dimension slices corresponding to those years,
+    not by setting values to NaN.
+
+    Args:
+        ds_input (xr.Dataset or xr.DataArray): The input xarray object with a 'time' dimension.
+        years_to_remove (list): A list of integer years to remove.
+
+    Returns:
+        xr.Dataset or xr.DataArray: A new xarray object with the specified years removed.
+    """
+    # Create a boolean mask for the 'time' dimension:
+    # True indicates that the year of that time point is NOT in the 'years_to_remove_set'.
+    # This identifies the time points you want to KEEP.
+    mask_to_keep = ~ds_input['time'].dt.year.isin(years_to_remove)
+
+    # Use .isel() with this boolean mask to select only the time points you want to keep.
+    # This directly removes the unwanted time slices from the dataset.
+    ds_filtered = ds_input.isel(time=mask_to_keep)
+
+    return ds_filtered
+
 def filter_xarray_by_day(ds: xr.Dataset, day: str) -> xr.Dataset:
     """
     Filters an xarray Dataset to keep only data from the specified day.
@@ -794,6 +819,25 @@ def nice_time_plot(plotvar, ax, label=None, title=None, ylabel=None, xlabel=None
         ax.legend(bbox_to_anchor=(1.05, 1))
     elif legend_out==False:
         ax.legend()
+
+def nice_sc(plotvar, ax, label=None, title=None, ylabel=None, xlabel=None, color=None, vmin=None, vmax=None, xmin=None, xmax=None, linestyle='-', legend_out=False):
+    plotvar.plot(ax=ax, label=label, color=color, linestyle=linestyle)
+    if not (title=='off'):
+        ax.set_title(title)
+    ax.set_ylabel(ylabel)
+    ax.set_xlabel(xlabel)
+    if vmin is not None:
+        if vmax is not None:
+            ax.set_ylim(vmin, vmax)
+    if xmin is not None:
+        if xmax is not None:
+            ax.set_xlim(xmin, xmax)
+    if legend_out==True:
+        ax.legend(bbox_to_anchor=(1.05, 1))
+    elif legend_out==False:
+        ax.legend()
+    ax.set_xticks(np.arange(1,13))
+    ax.set_xticklabels(months_name_list)
     # ax.grid()
 
 def time_series_ave(ds_list, var, ds_colors=False, ds_linestyle=False, figsize=(7.5, 4), year_min=2010, year_max=2022, title=None, ylabel=None, xlabel=None, vmin=None, vmax=None, legend_out=False, envelope=False):
@@ -844,7 +888,7 @@ def time_series_lonlat(ds_list, var, lon, lat, figsize=(7.5, 4), year_min=2010, 
         plotvar=plotvar.sel(lon=lon, lat=lat, method='nearest')
         nice_time_plot(plotvar,ax,label=ds.name, title=title, ylabel=ylabel, xlabel=xlabel)
 
-def seasonal_cycle_ave(ds_list, var, figsize=(7.5, 4), ds_colors=False, year_min=2010, year_max=2022, title=None, ylabel=None, xlabel=None):
+def seasonal_cycle_ave(ds_list, var, figsize=(7.5, 4), ds_colors=False, year_min=2010, year_max=2022, title=None, ylabel=None, xlabel=None, vmin=None, vmax=None):
     fig = plt.figure(figsize=figsize)
     ax = plt.axes()
     if not title:
@@ -855,12 +899,11 @@ def seasonal_cycle_ave(ds_list, var, figsize=(7.5, 4), ds_colors=False, year_min
         print(ds.attrs['name'] + ' : %.5f' % mean + ' ({})'.format(ds[var].attrs['units']))
         plotvar=ds[var].mean(dim=['lon', 'lat']).groupby('time.month').mean(dim='time')
         if ds_colors:
-            nice_time_plot(plotvar,ax,label=ds.name, color=ds.attrs["plot_color"], title=title, ylabel=ylabel, xlabel=xlabel)
+            # nice_time_plot(plotvar,ax,label=ds.name, color=ds.attrs["plot_color"], title=title, ylabel=ylabel, xlabel=xlabel, vmin=vmin, vmax=vmax, add_grid=True)
+            nice_sc(plotvar,ax,label=ds.name, color=ds.attrs["plot_color"], title=title, ylabel=ylabel, xlabel=xlabel, vmin=vmin, vmax=vmax)
         else:
-            nice_time_plot(plotvar,ax,label=ds.name, title=title, ylabel=ylabel, xlabel=xlabel)
-    ax.grid()
-    ax.set_xticks(np.arange(1,13))
-    ax.set_xticklabels(months_name_list)
+            # nice_time_plot(plotvar,ax,label=ds.name, title=title, ylabel=ylabel, xlabel=xlabel, vmin=vmin, vmax=vmax, add_grid=True)
+            nice_sc(plotvar,ax,label=ds.name, title=title, ylabel=ylabel, xlabel=xlabel, vmin=vmin, vmax=vmax)
 
 def seasonal_cycle_lonlat(ds_list, var, lon, lat, figsize=(7.5, 4), ds_colors=False, year_min=2010, year_max=2022, title=None, ylabel=None, xlabel=None):
     fig = plt.figure(figsize=figsize)

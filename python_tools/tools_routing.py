@@ -104,6 +104,7 @@ def stations_map_dict(stations_dict, river_cond=None, name_cond=None, title='Loc
     ax.coastlines()
     ax.add_feature(cfeature.RIVERS)
     ax.add_feature(cfeature.LAND, color='lightyellow', edgecolor='black')
+    ax.grid()
     ax.set_extent(extent)
 
     # Overlay river names as labels
@@ -291,15 +292,23 @@ def discharge_coord_sc(ds_list, coord_dict, var='hydrographs', figsize=(20, 10),
     plt.tight_layout()
 
 #for stations
-def ts_station(stations_ds, ax, station_id, name=None, var='runoff_mean', year_min=2010, year_max=2022, ylabel=None, xlabel=None):
+def ts_station(stations_ds, ax, station_id, name=None, var='runoff_mean', year_min=2010, year_max=2022, ylabel=None, xlabel=None, polcher_ds=False):
     ax.grid()
-    plotds = stations_ds.sel(id=station_id)
+    if polcher_ds:
+        mask = (stations_ds['id'] == station_id)
+        plotds = stations_ds.sel(stations=mask)
+    else:
+        plotds = stations_ds.sel(id=station_id)
     plotvar=plotds[var].where(stations_ds['time.year'] >= year_min, drop=True).where(stations_ds['time.year'] <= year_max, drop=True)
     nice_time_plot(plotvar,ax,label='obs', title=name, ylabel=ylabel, xlabel=xlabel, color='black')
 
-def ts_with_obs(ds_list, stations_ds, ax, station_id, station_data, var='hydrographs', year_min=2010, year_max=2022, ylabel=None, xlabel=None, plot_all_sim=False):
+def ts_with_obs(ds_list, stations_ds, ax, station_id, station_data, var='hydrographs', year_min=2010, year_max=2022, ylabel=None, xlabel=None, plot_all_sim=False, polcher_ds=False, title_letter=None):
     ax.grid()
-    station = stations_ds.sel(id=station_id)
+    if polcher_ds:
+        mask = (stations_ds['id'] == station_id)
+        station = stations_ds.sel(stations=mask)
+    else:
+        station = stations_ds.sel(id=station_id)
     station = station.where(station['time.year'] >= year_min, drop=True).where(station['time.year'] <= year_max, drop=True)
     mask = station['runoff_mean'].notnull()
 
@@ -315,23 +324,34 @@ def ts_with_obs(ds_list, stations_ds, ax, station_id, station_data, var='hydrogr
         name=station_data['name']
         nb=station_data['station_nb']
         river=station_data['river']
-        title= 'Station {} ({}, on river {})'.format(nb, name, river)
+        if title_letter:
+            title= '({}) Station {} ({}, on river {})'.format(title_letter, nb, name, river)
+        else:
+            title= 'Station {} ({}, on river {})'.format(nb, name, river)
         nice_time_plot(plotvar,ax,label=ds.name, title=title, color=ds.attrs['plot_color'], ylabel=ylabel, xlabel=xlabel)
 
-def sc_station(stations_ds, ax, station_id, name=None, var='runoff_mean', year_min=2010, year_max=2022, ylabel=None, xlabel=None):
+def sc_station(stations_ds, ax, station_id, name=None, var='runoff_mean', year_min=2010, year_max=2022, ylabel=None, xlabel=None, polcher_ds=False):
     ax.grid()
     ax.set_xticks(np.arange(1,13))
     ax.set_xticklabels(months_name_list)
-    plotds = stations_ds.sel(id=station_id)
+    if polcher_ds:
+        mask = (stations_ds['id'] == station_id)
+        plotds = stations_ds.sel(stations=mask)
+    else:
+        plotds = stations_ds.sel(id=station_id)
     plotvar=plotds[var].where(stations_ds['time.year'] >= year_min, drop=True).where(stations_ds['time.year'] <= year_max, drop=True)
     plotvar=plotvar.groupby('time.month').mean(dim='time')
     nice_time_plot(plotvar,ax,label='obs', title=name, ylabel=ylabel, xlabel=xlabel, color='black')
     
-def sc_with_obs(ds_list, stations_ds, ax, station_id, station_data, var='hydrographs', year_min=2010, year_max=2022, ylabel=None, xlabel=None, title_letter=None):
+def sc_with_obs(ds_list, stations_ds, ax, station_id, station_data, var='hydrographs', year_min=2010, year_max=2022, ylabel=None, xlabel=None, title_letter=None, polcher_ds=False, plot_all_sim=False):
     ax.grid()
     ax.set_xticks(np.arange(1,13))
     ax.set_xticklabels(months_name_list)
-    station = stations_ds.sel(id=station_id)
+    if polcher_ds:
+        mask = (stations_ds['id'] == station_id)
+        station = stations_ds.sel(stations=mask)
+    else:
+        station = stations_ds.sel(id=station_id)
     station = station.where(station['time.year'] >= year_min, drop=True).where(station['time.year'] <= year_max, drop=True)
     mask = station['runoff_mean'].notnull()
 
@@ -340,7 +360,8 @@ def sc_with_obs(ds_list, stations_ds, ax, station_id, station_data, var='hydrogr
 
     for ds in ds_list:
         plotvar=ds[var].sel(lon=lon, lat=lat, method='nearest')
-        plotvar=plotvar.where(mask)
+        if not plot_all_sim:
+            plotvar=plotvar.where(mask)
         plotvar=plotvar.groupby('time.month').mean(dim='time')
         name=station_data['name']
         nb=station_data['station_nb']

@@ -10,7 +10,7 @@ default_map_figsize = (8.5,4)
 # plt.rcParams['hatch.linewidth'] = 6
 # plt.bar(0,2,hatch='//' , edgecolor = None)
 
-def nice_map(plotvar, ax, cmap=myvir, vmin=None, vmax=None, poly=None, sig_mask=None, hatch='//', sig_viz=6, clabel=None, cbar_on=True, left_labels=True):
+def nice_map(plotvar, ax, cmap=myvir, vmin=None, vmax=None, poly=None, sig_mask=None, hatch='//', sig_viz=6, clabel=None, cbar_on=True, left_labels=True, n_ticks=6):
     ax.coastlines()
     # ax.add_feature(rivers)
     ax.add_feature(cfeature.RIVERS)
@@ -85,7 +85,7 @@ def nice_map(plotvar, ax, cmap=myvir, vmin=None, vmax=None, poly=None, sig_mask=
         cbar.set_label(clabel)
         ticks = np.linspace(vmin if vmin is not None else plotvar.min().values, 
                             vmax if vmax is not None else plotvar.max().values, 
-                            6)
+                            n_ticks)
         cbar.set_ticks(ticks)
         cbar.ax.yaxis.set_major_formatter(ticker.ScalarFormatter())
         cbar.ax.yaxis.get_major_formatter().set_scientific(True)
@@ -99,13 +99,16 @@ def nice_map(plotvar, ax, cmap=myvir, vmin=None, vmax=None, poly=None, sig_mask=
 
     plt.tight_layout()
 
-def map_plotvar(plotvar, vmin=None, vmax=None, cmap=myvir, figsize=default_map_figsize, title=None, poly=None, hex=False, hex_center=False):
+def map_plotvar(plotvar, vmin=None, vmax=None, cmap=myvir, clabel=None, figsize=default_map_figsize, title=None, poly=None, hex=False, hex_center=False):
     fig = plt.figure(figsize=figsize)
     ax = plt.axes(projection=ccrs.PlateCarree())
-    nice_map(plotvar, ax, cmap, vmin, vmax, poly=poly)
+    nice_map(plotvar, ax, cmap, vmin, vmax, poly=poly, clabel=clabel)
     if hex:
         plot_hexagon(ax, show_center=hex_center)
-    plt.title(title)
+    if title=="off":
+        pass
+    elif title:
+        plt.title(title)
 
 def map_ave(ds, var, vmin=None, vmax=None, cmap=myvir, multiplier=1, figsize=default_map_figsize, clabel=None, hex=False, hex_center=False, title=None, poly=None):
     fig = plt.figure(figsize=figsize)
@@ -131,18 +134,18 @@ def map_ave(ds, var, vmin=None, vmax=None, cmap=myvir, multiplier=1, figsize=def
             plt.title(var + ' (' + ds[var].attrs['units'] + ')')
 
 def map_diff_ave(ds1, ds2, var, vmin=None, vmax=None, cmap=emb, figsize=default_map_figsize, title=None, clabel=None, hex=False, hex_center=False,
-                 sig=False, sig_method=0 , pvalue=0.05, hatch='//', sig_viz=6, check_norm=False):
+                 sig=False, sig_method=0 , pvalue=0.05, hatch='//', sig_viz=6, check_norm=False, n_ticks=6):
     fig = plt.figure(figsize=figsize)
     ax = plt.axes(projection=ccrs.PlateCarree())
     diff = (ds1[var]-ds2[var]).mean(dim='time')
 
     if sig:
         sig_mask = compute_sig_mask(ds1, ds2, var, check_norm=check_norm, method=sig_method, pvalue=pvalue)
-        nice_map(diff, ax, cmap=cmap, vmin=vmin, vmax=vmax, sig_mask=sig_mask, hatch=hatch, sig_viz=sig_viz, clabel=clabel)
+        nice_map(diff, ax, cmap=cmap, vmin=vmin, vmax=vmax, sig_mask=sig_mask, hatch=hatch, sig_viz=sig_viz, clabel=clabel, n_ticks=n_ticks)
 
     else:
         print('No significance mask applied')
-        nice_map(diff, ax, cmap=cmap, vmin=vmin, vmax=vmax, clabel=clabel)
+        nice_map(diff, ax, cmap=cmap, vmin=vmin, vmax=vmax, clabel=clabel, n_ticks=n_ticks)
     if hex:
         plot_hexagon(ax, show_center=hex_center)
     if title=="off":
@@ -321,6 +324,15 @@ def map_seasons(plotvar, vmin=None, vmax=None, cmap=myvir, figsize=(12,7), hex=F
         axs.flatten()[i].set_title(season)
         if hex:
             plot_hexagon(axs.flatten()[i], show_center=hex_center)
+
+def map_rmse_ave(ds1, ds2, var, vmin=None, vmax=None, cmap=redsW, figsize=default_map_figsize, title=None, clabel=None):
+    rmse = np.sqrt(((ds1[var]-ds2[var])**2).mean(dim='time'))
+    rmse = rmse.where(rmse>0)
+    if title is None:
+        title = ds1[var].attrs['long_name'] + ' average RMSE'
+    if clabel is None:
+        clabel = 'RMSE (' + ds1[var].attrs['units'] + ')'
+    map_plotvar(rmse, cmap=cmap, vmin=vmin, vmax=vmax, clabel=clabel, figsize=figsize)
 
 ## quiver plots for transport ##
 def map_wind(ds, ax=None, extra_var='wind speed', extra_ds=None, height='10m', vmin=None, vmax=None, figsize=default_map_figsize, cmap=reds, dist=6, scale=100, clabel=None):

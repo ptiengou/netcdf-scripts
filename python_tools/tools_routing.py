@@ -330,7 +330,7 @@ def ts_with_obs(ds_list, stations_ds, ax, station_id, station_data, var='hydrogr
             title= 'Station {} ({}, on river {})'.format(nb, name, river)
         nice_time_plot(plotvar,ax,label=ds.name, title=title, color=ds.attrs['plot_color'], ylabel=ylabel, xlabel=xlabel)
 
-def sc_station(stations_ds, ax, station_id, name=None, var='runoff_mean', year_min=2010, year_max=2022, ylabel=None, xlabel=None, polcher_ds=False):
+def sc_station(stations_ds, ax, station_id, name=None, var='runoff_mean', year_min=2010, year_max=2022, ylabel=None, xlabel=None, polcher_ds=False, title=None):
     ax.grid()
     ax.set_xticks(np.arange(1,13))
     ax.set_xticklabels(months_name_list)
@@ -341,9 +341,11 @@ def sc_station(stations_ds, ax, station_id, name=None, var='runoff_mean', year_m
         plotds = stations_ds.sel(id=station_id)
     plotvar=plotds[var].where(stations_ds['time.year'] >= year_min, drop=True).where(stations_ds['time.year'] <= year_max, drop=True)
     plotvar=plotvar.groupby('time.month').mean(dim='time')
-    nice_time_plot(plotvar,ax,label='obs', title=name, ylabel=ylabel, xlabel=xlabel, color='black')
+    if not title:
+        title = name
+    nice_time_plot(plotvar,ax,label='obs', title=title, ylabel=ylabel, xlabel=xlabel, color='black')
     
-def sc_with_obs(ds_list, stations_ds, ax, station_id, station_data, var='hydrographs', year_min=2010, year_max=2022, ylabel=None, xlabel=None, title_letter=None, polcher_ds=False, plot_all_sim=False):
+def sc_with_obs(ds_list, stations_ds, ax, station_id, station_data, var='hydrographs', year_min=2010, year_max=2022, ylabel=None, xlabel=None, title_letter=None, polcher_ds=False, plot_all_sim=False, title=None):
     ax.grid()
     ax.set_xticks(np.arange(1,13))
     ax.set_xticklabels(months_name_list)
@@ -366,10 +368,11 @@ def sc_with_obs(ds_list, stations_ds, ax, station_id, station_data, var='hydrogr
         name=station_data['name']
         nb=station_data['station_nb']
         river=station_data['river']
-        if title_letter:
-            title= '({}) Station {} ({}, on river {})'.format(title_letter, nb, name, river)
-        else:
-            title= 'Station {} ({}, on river {})'.format(nb, name, river)
+        if not title:
+            if title_letter:
+                title= '({}) Station {} ({}, on river {})'.format(title_letter, nb, name, river)
+            else:
+                title= 'Station {} ({}, on river {})'.format(nb, name, river)
         nice_time_plot(plotvar,ax,label=ds.name, title=title, color=ds.attrs['plot_color'], ylabel=ylabel, xlabel=xlabel)
 
 #metrics definition

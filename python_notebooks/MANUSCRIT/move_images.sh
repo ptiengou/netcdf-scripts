@@ -1,0 +1,1 @@
+cp -r figures/* /home/ptiengou/Documents/Manuscrit_LaTeX/images

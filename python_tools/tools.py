@@ -97,6 +97,7 @@ good_bad=ListedColormap(mpl.colormaps['RdYlGn_r'](np.linspace(0, 1, 10)))
 good_badW=add_central_white_cmap('RdYlGn_r', 11)
 bad_goodW=add_central_white_cmap('RdYlGn', 11)
 myterrain=ListedColormap(mpl.colormaps['terrain'](np.linspace(0, 1, 10)))
+myrainbow= ListedColormap(mpl.colormaps['gist_rainbow'](np.linspace(0, 1, 8)))
 
 ### Dataset manipulations ###
 

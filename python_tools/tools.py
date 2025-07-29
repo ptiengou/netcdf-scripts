@@ -90,6 +90,7 @@ greens = ListedColormap(mpl.colormaps['Greens'](np.linspace(0, 1, 10)))
 greensW = make_cmap_white('Greens', 10)
 blues = ListedColormap(mpl.colormaps['Blues'](np.linspace(0, 1, 10)))
 bluesW = make_cmap_white('Blues', 10)
+greys = ListedColormap(mpl.colormaps['Greys'](np.linspace(0, 1, 10)))
 wet = ListedColormap(mpl.colormaps['YlGnBu'](np.linspace(0, 1, 10)))
 wetW = make_cmap_white('YlGnBu', 10)
 bad_good=ListedColormap(mpl.colormaps['RdYlGn'](np.linspace(0, 1, 10)))
@@ -113,20 +114,28 @@ def seasonnal_ds_list(ds):
     return ds_list
 
 #temporal average
-def mean_dataset(ds):
-    ds_mean = ds.mean(dim='time')
+def mean_dataset(ds, mean_dim='time'):
+    ds_mean = ds.mean(dim=mean_dim)
     ds_mean.attrs = ds.attrs
-    # ds_mean.attrs['name'] = '{}'.format(ds.attrs['name'])
-    # ds_mean.attrs['plot_color'] = ds.attrs['plot_color']
     return ds_mean
 
 #spatial average
 def aggr_dataset(ds):
     ds_aggr = ds.mean(dim='lon').mean(dim='lat')
     ds_aggr.attrs = ds.attrs
-    # ds_aggr.attrs['name'] = '{}'.format(ds.attrs['name'])
-    # ds_aggr.attrs['plot_color'] = ds.attrs['plot_color']
     return ds_aggr
+
+#transfer variables name and units
+def transfer_vars(ds1, ds2):
+    """
+    Transfer variable names and units from ds1 to ds2.
+    """
+    for var in ds1.data_vars:
+        if var in ds2.data_vars:
+            # ds2[var].attrs['long_name'] = ds1[var].attrs.get('long_name', '')
+            ds2[var].attrs['units'] = ds1[var].attrs.get('units')
+            ds2[var].attrs['name'] = ds1[var].attrs.get('name')
+    return ds2
 
 #diff between two ds
 def diff_dataset(ds1, ds2):

@@ -106,7 +106,7 @@ def map_plotvar(plotvar, vmin=None, vmax=None, cmap=myvir, clabel=None, figsize=
     if hex:
         plot_hexagon(ax, show_center=hex_center)
     if title=="off":
-        pass
+        plt.title("")
     elif title:
         plt.title(title)
 
@@ -122,7 +122,7 @@ def map_ave(ds, var, vmin=None, vmax=None, cmap=myvir, multiplier=1, figsize=def
     if hex:
         plot_hexagon(ax, show_center=hex_center)
     if title=="off":
-        pass
+        plt.title("")
     elif title:
         plt.title(title)
     else:
@@ -148,8 +148,9 @@ def map_diff_ave(ds1, ds2, var, vmin=None, vmax=None, cmap=emb, figsize=default_
         nice_map(diff, ax, cmap=cmap, vmin=vmin, vmax=vmax, clabel=clabel, n_ticks=n_ticks)
     if hex:
         plot_hexagon(ax, show_center=hex_center)
+
     if title=="off":
-        pass
+        plt.title("")
     elif title:
         plt.title(title)
     else:
@@ -294,7 +295,7 @@ def map_rel_diff_ave(ds1, ds2, var, vmin=None, vmax=None, cmap=emb, title=None, 
     if hex:
         plot_hexagon(ax, show_center=hex_center)
     if title=="off":
-        pass
+        plt.title("")
     elif title:
         plt.title(title)
     else:

@@ -817,6 +817,8 @@ def nice_time_plot(plotvar, ax, label=None, title=None, ylabel=None, xlabel=None
     plotvar.plot(ax=ax, label=label, color=color, linestyle=linestyle)
     if not (title=='off'):
         ax.set_title(title)
+    else:
+        ax.set_title('')
     ax.set_ylabel(ylabel)
     ax.set_xlabel(xlabel)
     if vmin is not None:
@@ -834,6 +836,8 @@ def nice_sc(plotvar, ax, label=None, title=None, ylabel=None, xlabel=None, color
     plotvar.plot(ax=ax, label=label, color=color, linestyle=linestyle)
     if not (title=='off'):
         ax.set_title(title)
+    else:
+        ax.set_title('')
     ax.set_ylabel(ylabel)
     ax.set_xlabel(xlabel)
     if vmin is not None:

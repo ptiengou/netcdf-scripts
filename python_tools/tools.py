@@ -1836,9 +1836,9 @@ def add_moisture_flux_to_ds(ds, mask, mask_area=None, recalc_width=False):
     ds['q_output'] = (u_output + v_output) * 86400 / mask_area
     ds['q_total'] = ds['q_input'] - ds['q_output']
     #add attribute units to 2 vars
-    ds['q_input'].attrs['units']  = 'mm/d'
-    ds['q_output'].attrs['units'] = 'mm/d'
-    ds['q_total'].attrs['units']  = 'mm/d'
+    ds['q_input'].attrs['units']  = 'mm d⁻¹'
+    ds['q_output'].attrs['units'] = 'mm d⁻¹'
+    ds['q_total'].attrs['units']  = 'mm d⁻¹'
     return(ds)
 
 def add_moisture_divergence(ds, uq_var='uq', vq_var='vq', cell_width_var='cell_width', cell_height_var='cell_height'):  
@@ -1881,13 +1881,13 @@ def add_moisture_divergence(ds, uq_var='uq', vq_var='vq', cell_width_var='cell_w
     # Add divergence to the dataset
     ds['moisture_divergence'] = divergence
     ds['moisture_divergence'].attrs = {
-        'units': 'mm/d',
+        'units': 'mm d⁻¹',
         'description': 'Moisture divergence computed from uq and vq',
         'long_name': 'Moisture divergence'
     }
     ds['moisture_convergence'] = convergence
     ds['moisture_convergence'].attrs = {
-        'units': 'mm/d',
+        'units': 'mm d⁻¹',
         'description': 'Moisture convergence computed from uq and vq',
         'long_name': 'Moisture convergence'
     }

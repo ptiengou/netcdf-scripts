@@ -49,15 +49,15 @@ def format_lmdz_HF(filename, color, name):
     ds['precip'].attrs['units']='mm (over 30mn)'
 
     # ds['SWdn_diff'] = ds['SWdnSFCclr'] - ds['SWdnSFC']
-    # ds['SWdn_diff'].attrs['units'] = 'W/m2'
+    # ds['SWdn_diff'].attrs['units'] = 'W m⁻²'
 
     if 'rsds' in ds:
         rename_dict2={'rsds':'SWdnSFC',
                       'rlds':'LWdnSFC'}
         ds=ds.rename(rename_dict2)
         #add units
-        ds['SWdnSFC'].attrs['units'] = 'W/m2'
-        ds['LWdnSFC'].attrs['units'] = 'W/m2'
+        ds['SWdnSFC'].attrs['units'] = 'W m⁻²'
+        ds['LWdnSFC'].attrs['units'] = 'W m⁻²'
 
     # ds = compute_grid_cell_width(ds)
     # ds = add_moisture_divergence(ds)
@@ -144,7 +144,7 @@ def energy_budget_dc(ds_lmdz1, ds_lmdz2, ds_orc1, ds_orc2, title=None, lab1=None
     var_orc = ['swnet', 'lwnet', 'Qg']
     fig, ax = plt.subplots(figsize=(8, 6))
 
-    ylabel = 'W/m²'
+    ylabel = 'W m⁻²'
     xlabel = 'Time (UTC)'
 
     for ds_lmdz, ds_orc in zip([ds_lmdz1, ds_lmdz2], [ds_orc1, ds_orc2]):

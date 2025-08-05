@@ -307,7 +307,7 @@ def add_wind_speed(ds: xr.Dataset) -> xr.Dataset:
 
     # Set attributes for the wind speed DataArray
     wind_speed.attrs['long_name'] = 'Wind Speed'
-    wind_speed.attrs['units'] = 'm/s'
+    wind_speed.attrs['units'] = 'm s⁻¹'
 
     # Add the wind speed to the dataset
     ds['wind_speed'] = wind_speed

@@ -513,7 +513,7 @@ def format_Cendrosa_obs(filename):
     ds = xr.open_mfdataset(filename)
     ds = ds.assign_coords(time_decimal=ds.time.dt.hour + ds.time.dt.minute / 60)
     #add name and plot color
-    ds.attrs['name'] = 'Cendrosa_obs'
+    ds.attrs['name'] = 'Cendrosa obs'
     ds.attrs['plot_color'] = 'black'
     ds.attrs['linestyle']='-'
 
@@ -555,14 +555,14 @@ def format_Cendrosa_obs(filename):
     ds = ds.rename(rename_dict)
 
     #change temperatures to K
-    ds['t2m'] = ds['t2m'] + 273.15
-    ds['t2m'].attrs['units'] = 'K'
-    ds['t10m'] = ds['t10m'] + 273.15
-    ds['t10m'].attrs['units'] = 'K'
-    ds['t25m'] = ds['t25m'] + 273.15
-    ds['t25m'].attrs['units'] = 'K'
-    ds['t50m'] = ds['t50m'] + 273.15
-    ds['t50m'].attrs['units'] = 'K'
+    # ds['t2m'] = ds['t2m'] + 273.15
+    # ds['t2m'].attrs['units'] = 'K'
+    # ds['t10m'] = ds['t10m'] + 273.15
+    # ds['t10m'].attrs['units'] = 'K'
+    # ds['t25m'] = ds['t25m'] + 273.15
+    # ds['t25m'].attrs['units'] = 'K'
+    # ds['t50m'] = ds['t50m'] + 273.15
+    # ds['t50m'].attrs['units'] = 'K'
     #change sign of Qg
     ds['Qg'] = -ds['Qg']
     #make netrad fluxes
@@ -587,7 +587,7 @@ def format_Cendrosa_obs(filename):
 
 def format_ElsPlans_obs(ds, start_day):
     #add name and plot color
-    ds.attrs['name'] = 'ElsPlans_obs'
+    ds.attrs['name'] = 'ElsPlans obs'
     ds.attrs['plot_color'] = 'black'
     ds.attrs['linestyle']='--'
 
@@ -628,14 +628,14 @@ def format_ElsPlans_obs(ds, start_day):
     #remove all values of 1e11
     ds = ds.where(ds != 1e11)
     # change temperatures to K
-    ds['t2m'] = ds['t2m'] + 273.15
-    ds['t2m'].attrs['units'] = 'K'
-    ds['t10m'] = ds['t10m'] + 273.15
-    ds['t10m'].attrs['units'] = 'K'
-    ds['t25m'] = ds['t25m'] + 273.15
-    ds['t25m'].attrs['units'] = 'K'
-    ds['t50m'] = ds['t50m'] + 273.15
-    ds['t50m'].attrs['units'] = 'K'
+    # ds['t2m'] = ds['t2m'] + 273.15
+    # ds['t2m'].attrs['units'] = 'K'
+    # ds['t10m'] = ds['t10m'] + 273.15
+    # ds['t10m'].attrs['units'] = 'K'
+    # ds['t25m'] = ds['t25m'] + 273.15
+    # ds['t25m'].attrs['units'] = 'K'
+    # ds['t50m'] = ds['t50m'] + 273.15
+    # ds['t50m'].attrs['units'] = 'K'
     #get turbulent fluxes
     # Latent heat of vaporization of water in J/kg
     lambda_v = 2.5e6

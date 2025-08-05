@@ -39,7 +39,7 @@ def format_lmdz_HF(filename, color, name):
     ds['ovap'].attrs['long_name'] = 'Specific humidity'
     #same for q2m
     ds['q2m'] = ds['q2m']*1000
-    ds['q2m'].attrs['units'] = 'g/kg'
+    ds['q2m'].attrs['units'] = 'g kg⁻¹'
     #turn psol to hPa
     ds['psol'] = ds['psol']/100
     ds['psol'].attrs['units'] = 'hPa'
@@ -65,10 +65,25 @@ def format_lmdz_HF(filename, color, name):
     ds['q_transport'].attrs['units'] = '-'
     ds['q_transport'].attrs['long_name'] = 'Moisture transport'
     
+    ds['t2m'] = ds['t2m'] - 273.15  # Convert from Kelvin to Celsius
+    ds['t2m'].attrs['units'] = '°C'
     ds['t2m'].attrs['long_name'] = '2-m temperature'
+    
     ds['rh2m'].attrs['long_name'] = '2-m relative humidity'
 
+    #change units to W m⁻² rather than W/m2
+    for var in ['sens', 'flat', 'swnet', 'lwnet', 'Qg']:
+        if var in ds:
+            ds[var].attrs['units'] = 'W m⁻²'
     return ds
+
+def mean_value_hour(ds, var, hour):
+    """
+    Calculate the mean value of a variable at a given hour.
+    """
+    ds_hour = ds.where(ds.time.dt.hour == hour).mean(dim='time')
+    mean_value = ds_hour[var].mean().values
+    return mean_value
 
 ## DIURNAL CYCLES ##
 #generic function
@@ -80,7 +95,10 @@ def diurnal_cycle_ax(ax, title=None, ylabel=None, xlabel=None, vmin=None, vmax=N
     ax.set_xticks(tick_positions)
     ax.set_xticklabels(tick_labels, rotation=45, ha="right")
     if title:
-        ax.set_title(title)
+        if title=='off':
+            ax.set_title('')
+        else:
+            ax.set_title(title)
     if ylabel:
         ax.set_ylabel(ylabel)
     if xlabel:

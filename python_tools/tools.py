@@ -420,7 +420,7 @@ def add_relative_humidity(ds):
 
     return ds
 
-def add_specific_humidity_2m(ds, assume_psol=False):
+def add_specific_humidity_2m(ds, assume_psol=False, t2m_in_kelvin=True, psol_Pa=False):
     """
     Calculate 2m specific humidity from the dataset and add it as a new variable.
     Needs t2m, rh2m and surface pressure psol
@@ -430,13 +430,23 @@ def add_specific_humidity_2m(ds, assume_psol=False):
     # Check if 'q' variable exists
     if 'q2m' in ds:
         raise ValueError("q2m already exists.")
-    t2m=ds['t2m'] - 273.15  # Convert temperature from Kelvin to Celsius
+    if t2m_in_kelvin:
+        # print("Converting t2m from Kelvin to Celsius.")
+        t2m=ds['t2m'] - 273.15  # Convert temperature from Kelvin to Celsius
+    else:
+        t2m=ds['t2m']
+    # print("Converting rh2m from % to fraction.")
     rh2m=ds['rh2m']/100
     if assume_psol:
         #create dummy variable with 1013.25
         psol = xr.full_like(t2m, 1013.25)
     else:
-        psol=ds['psol']  # Pressure in hPa
+        if psol_Pa:
+            # Convert pressure from Pa to hPa if psol is in Pa
+            # print("Converting psol from Pa to hPa.")
+            psol = ds['psol'] / 100  # Convert pressure from Pa to hPa
+        else:
+            psol = ds['psol']
 
     # Compute saturation vapor pressure (e_s) in hPa using Tetens formula
     e_s = 6.112 * np.exp((17.67 * t2m) / (t2m + 243.5))
@@ -450,7 +460,7 @@ def add_specific_humidity_2m(ds, assume_psol=False):
 
     # Add specific humidity to the dataset
     ds['q2m'] = q2m * 1000
-    ds['q2m'].attrs['units'] = 'g/kg'
+    ds['q2m'].attrs['units'] = 'g kg⁻¹'
     ds['q2m'].attrs['description'] = 'Specific Humidity at 2m based on t2m, rh2m, and psol'
     ds['q2m'].attrs['long_name'] = 'Specific Humidity at 2m'
     return ds

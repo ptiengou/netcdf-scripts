@@ -106,6 +106,17 @@ def select_dataset_lon_lat(ds, lon, lat, name=None, plot_color=None):
         ds_selected.attrs['plot_color'] = plot_color
     return ds_selected
     
+def extract_pressure_surface(mesoNH_4D, mesoNH):
+    # Extract the pressure at the surface (level 0)
+    psol = mesoNH_4D['PABST'].isel(level=0)
+    psol.attrs['long_name'] = 'Pressure at Surface'
+    psol.attrs['units'] = 'Pa'
+    
+    # Add the pressure to the mesoNH dataset
+    mesoNH['psol'] = psol
+    
+    return mesoNH
+    
 ## MAPS ##
 
 def nice_map_mesoNH(data_to_plot, vmin=None, vmax=None, cmap='viridis', 
@@ -141,7 +152,6 @@ def nice_map_mesoNH(data_to_plot, vmin=None, vmax=None, cmap='viridis',
     if add_liaise:
         add_liaise_site_loc(ax=ax)
     #remove gridlines
-    
 
     # Set the map extent to the *valid data's* lon/lat bounds after masking
     # This ensures the plot zooms into the visible data.

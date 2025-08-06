@@ -59,8 +59,8 @@ def add_liaise_site_loc(ax=None):
 def select_liaise_sites_sop(ds, name_suffix, linestyle_cen=None, linestyle_els=None, sop=True):
     cen=sel_closest(ds, Cendrosa_lon, Cendrosa_lat)
     els=sel_closest(ds, ElsPlans_lon, ElsPlans_lat)
-    cen.attrs['name']='Cendrosa '+name_suffix
-    els.attrs['name']='ElsPlans '+name_suffix
+    cen.attrs['name']=name_suffix
+    els.attrs['name']=name_suffix
     if linestyle_cen is not None and linestyle_els is not None:
         cen.attrs['linestyle']=linestyle_cen
         els.attrs['linestyle']=linestyle_els
@@ -513,7 +513,7 @@ def format_Cendrosa_obs(filename):
     ds = xr.open_mfdataset(filename)
     ds = ds.assign_coords(time_decimal=ds.time.dt.hour + ds.time.dt.minute / 60)
     #add name and plot color
-    ds.attrs['name'] = 'Cendrosa obs'
+    ds.attrs['name'] = 'obs'
     ds.attrs['plot_color'] = 'black'
     ds.attrs['linestyle']='-'
 
@@ -587,7 +587,7 @@ def format_Cendrosa_obs(filename):
 
 def format_ElsPlans_obs(ds, start_day):
     #add name and plot color
-    ds.attrs['name'] = 'ElsPlans obs'
+    ds.attrs['name'] = 'obs'
     ds.attrs['plot_color'] = 'black'
     ds.attrs['linestyle']='--'
 
@@ -659,6 +659,6 @@ def format_ElsPlans_obs(ds, start_day):
     ds['mrsos'] = ds['SM10_subsoil']
     ds['mrsos'].attrs['units'] = 'mm'
     #add specific humidity
-    ds = add_specific_humidity_2m(ds)
+    ds = add_specific_humidity_2m(ds, t2m_in_kelvin=False, psol_Pa=False)
 
     return(ds)

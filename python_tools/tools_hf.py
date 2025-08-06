@@ -40,6 +40,7 @@ def format_lmdz_HF(filename, color, name):
     #same for q2m
     ds['q2m'] = ds['q2m']*1000
     ds['q2m'].attrs['units'] = 'g kg⁻¹'
+    ds['q2m'].attrs['long_name'] = '2-m specific humidity'
     #turn psol to hPa
     ds['psol'] = ds['psol']/100
     ds['psol'].attrs['units'] = 'hPa'
@@ -106,7 +107,7 @@ def diurnal_cycle_ax(ax, title=None, ylabel=None, xlabel=None, vmin=None, vmax=N
     if vmin is not None and vmax is not None:
         ax.set_ylim(vmin, vmax)
     if legend_out==True:
-        ax.legend(bbox_to_anchor=(1.05, 1))
+        ax.legend(bbox_to_anchor=(1.05, 0.8))
     elif legend_out==False:
         ax.legend()
 

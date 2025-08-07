@@ -442,7 +442,7 @@ def dat_to_xarray(file_path, height_line, name_line):
 
     return ds
 
-def format_Cendrosa_RS(filename, name='Cendrosa_RS'):
+def format_Cendrosa_RS(filename, name='obs'):
     Cendrosa_RS = xr.open_mfdataset(filename)
     Cendrosa_RS.attrs['name'] = name
     Cendrosa_RS.attrs['plot_color']='black'
@@ -459,13 +459,15 @@ def format_Cendrosa_RS(filename, name='Cendrosa_RS'):
 
     # Calculate specific humidity
     Cendrosa_RS['ovap'] = 1000* Cendrosa_RS['mixingRatio'] / (1000 + Cendrosa_RS['mixingRatio'])
-    Cendrosa_RS['ovap'].attrs['units'] = 'g/kg'
+    Cendrosa_RS['ovap'].attrs['units'] = 'g kg⁻¹'
+
+    Cendrosa_RS['altitude_agl'] = Cendrosa_RS['altitude']
 
     return Cendrosa_RS
 
-def format_ElsPlans_RS(filename, name='ElsPlans_RS'):
+def format_ElsPlans_RS(filename, name='obs'):
     ElsPlans_RS = txtRS_to_xarray(filename)
-    ElsPlans_RS.attrs['name'] = 'ElsPlans_RS'
+    ElsPlans_RS.attrs['name'] = name
     ElsPlans_RS.attrs['plot_color']='black'
     rename_dict = {
         'Time':'time',
@@ -489,7 +491,10 @@ def format_ElsPlans_RS(filename, name='ElsPlans_RS'):
 
     # Calculate specific humidity
     ElsPlans_RS['ovap'] = 1000* ElsPlans_RS['mixingRatio'] / (1000 + ElsPlans_RS['mixingRatio'])
-    ElsPlans_RS['ovap'].attrs['units'] = 'g/kg'
+    ElsPlans_RS['ovap'].attrs['units'] = 'g kg⁻¹'
+
+    # Add altitude above ground level
+    ElsPlans_RS['altitude_agl'] = ElsPlans_RS['altitude']
 
     return ElsPlans_RS
 

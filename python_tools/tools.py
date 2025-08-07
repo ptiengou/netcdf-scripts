@@ -465,6 +465,34 @@ def add_specific_humidity_2m(ds, assume_psol=False, t2m_in_kelvin=True, psol_Pa=
     ds['q2m'].attrs['long_name'] = 'Specific Humidity at 2m'
     return ds
 
+def add_specific_humidity_from_mixing_ratio(ds, mixing_ratio_var='RVT', specific_humidity_var='ovap'):
+    """
+    Calculate specific humidity from mixing ratio and add it to the dataset.
+    
+    Parameters:
+        ds (xarray.Dataset): Input dataset containing mixing_ratio
+    
+    Returns:
+        xarray.Dataset: Updated dataset with specific humidity added as a new variable.
+    """
+    #check if variable exists
+    if mixing_ratio_var not in ds:
+        raise ValueError(f"Variable '{mixing_ratio_var}' not found in the dataset.")
+    
+    # Extract variables
+    mixing_ratio = ds[mixing_ratio_var]  # Mixing ratio in kg/kg
+
+    # Calculate specific humidity (q)
+    q = mixing_ratio / (1 + mixing_ratio)
+
+    # Add specific humidity to the dataset
+    ds[specific_humidity_var] = q * 1000  # Convert to g/kg
+    ds[specific_humidity_var].attrs['units'] = 'g kg⁻¹'
+    ds[specific_humidity_var].attrs['long_name'] = 'Specific humidity'
+    ds[specific_humidity_var].attrs['description'] = 'Specific Humidity calculated from mixing ratio'
+    
+    return ds
+
 #restrict to square subdomain
 subdomain_spain={'lonmin':-9.5, 'lonmax':3.0, 'latmin':36.0, 'latmax':44.0}
 subdomain_ebro={'lonmin':-2.0, 'lonmax':1.0, 'latmin':41.0, 'latmax':43.0}

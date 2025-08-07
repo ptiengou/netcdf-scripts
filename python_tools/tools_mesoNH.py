@@ -79,6 +79,8 @@ def subset_dataset_by_polygon(ds_input, polygon_dict, name=None, plot_color=None
     if plot_color:
         ds_subsetted.attrs['plot_color'] = plot_color
 
+    if 'level' in ds_subsetted.dims:
+        ds_subsetted['altitude_agl'] = ds_subsetted['level']
 
     return ds_subsetted
 
@@ -104,6 +106,10 @@ def select_dataset_lon_lat(ds, lon, lat, name=None, plot_color=None):
     #add plot_color
     if plot_color:
         ds_selected.attrs['plot_color'] = plot_color
+    
+    if 'level' in ds_selected.dims:
+        ds_selected['altitude_agl'] = ds_selected['level']
+    
     return ds_selected
     
 def extract_pressure_surface(mesoNH_4D, mesoNH):
@@ -117,6 +123,101 @@ def extract_pressure_surface(mesoNH_4D, mesoNH):
     
     return mesoNH
     
+
+def flux_pt_to_mass_pt(ds, only_basic_vars=True, 
+                       basic_vars = [
+                           'UT', 'VT', 'WT',
+                           'UMME', 'VMME', 'WMME',
+                           'latitude_f', 'longitude_f',], 
+                       verbose=True):
+    """
+    Change flux point coordinates of dataset into mass point coordinates.
+    Done through interpolation between flux points.
+    Generalization of center_uvw() function.
+    
+    parameter:
+        ds: xarray.dataset
+    Taken from Tanguy Lunel's repo https://github.com/tylunel/postproc_python
+    """
+    
+    for var in list(ds.keys()):
+        if only_basic_vars and var not in basic_vars:
+            continue
+        
+        # NOT WORKING
+#        for coord in ['nj_v', 'nj_u', 'ni_v', 'ni_u', 'level_w']:
+#            new_coord = coord[:-2]
+#            ds[var] = ds[var].interp(coords={coord:ds[new_coord].values}).rename(
+#                {coord: new_coord})
+#            if verbose:
+#                print(f"{var}: coordinates '{coord}' changed to '{new_coord}'")
+            
+        # change coordinates for 'nj_v' flux points
+        if 'nj_v' in list(ds[var].coords):
+            ds[var] = ds[var].interp(nj_v=ds.nj.values).rename(
+                {'nj_v': 'nj'})
+            if verbose:
+                print(f"{var}: coordinates 'nj_v' changed to 'nj'")
+        
+        # change coordinates for 'ni_v' flux points
+        if 'ni_v' in list(ds[var].coords):
+            ds[var] = ds[var].interp(ni_v=ds.ni.values).rename(
+                {'ni_v': 'ni'})
+            if verbose:
+                print(f"{var}: coordinates 'ni_v' changed to 'ni'")
+        
+        # change coordinates for 'ni_u' flux points
+        if 'ni_u' in list(ds[var].coords):
+            ds[var] = ds[var].interp(ni_u=ds.ni.values).rename(
+                {'ni_u': 'ni'})
+            if verbose:
+                print(f"{var}: coordinates 'ni_u' changed to 'ni'")
+        
+        # change coordinates for 'nj_u' flux points
+        if 'nj_u' in list(ds[var].coords):
+            ds[var] = ds[var].interp(nj_u=ds.nj.values).rename(
+                {'nj_u': 'nj'})
+            if verbose:
+                print(f"{var}: coordinates 'nj_u' changed to 'nj'")
+        
+        # change coordinates for '_w' flux points
+        if 'level_w' in list(ds[var].coords):
+            ds[var] = ds[var].interp(level_w=ds.level.values).rename(
+                {'level_w': 'level'})
+            if verbose:
+                print(f"{var}: coordinate 'level_w' changed to 'level'")
+    
+        # ALT coordinate badly encoded ('level_w not defnied as coords)
+        if var == 'ALT':
+            ds[var] = ds[var].interp(level_w=ds.level.values).rename(
+                {'level_w': 'level'})
+            if verbose:
+                print(f"{var}: coordinate 'level_w' changed to 'level'")
+    
+    # remove flux coordinates
+    try:
+        ds_new = ds.drop(['latitude_u', 'longitude_u', 'ni_u', 'nj_u',
+                      'latitude_v', 'longitude_v', 'ni_v', 'nj_v',
+                      'level_w',
+                      'latitude_f', 'longitude_f',
+                      ])
+    except ValueError:
+        try:
+            ds_new = ds.drop(['latitude_u', 'longitude_u', 'ni_u', 'nj_u',
+                          'latitude_v', 'longitude_v', 'ni_v', 'nj_v',
+                          'level_w',
+                          ])
+        except:
+            if verbose:
+                print("no old coordinate dropped - error during ds.drop()")
+            ds_new = ds
+    except:
+        if verbose:
+            print("no old coordinate dropped - error during ds.drop()")
+        ds_new = ds
+
+    return ds_new
+
 ## MAPS ##
 
 def nice_map_mesoNH(data_to_plot, vmin=None, vmax=None, cmap='viridis', 

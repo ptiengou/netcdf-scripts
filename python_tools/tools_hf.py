@@ -28,6 +28,8 @@ def format_lmdz_HF(filename, color, name):
     ds['ground_level'] = ds['phis'] / 9.81
     ds['ground_level'].attrs['units'] = 'm'
 
+    ds['altitude_agl'] = ds['geoph'] - ds['ground_level']
+
     ds=add_wind_speed(ds)
     ds=add_wind_direction(ds)
     ds=add_wind_10m(ds)
@@ -274,28 +276,32 @@ def profile_preslevs_local(ds_list, var, figsize=(6,8), preslevelmax=20, title=N
     ax.legend()
 
 #plot a profile from 3D variable with altitude as y_coord
-def profile_altitude_local_mean(ds_list, var, obs_ds_list=None, figsize=(6,8), ax=None, title=None, altmin=-0, altmax=2000, nbins=None, substract_gl=True, xmin=None, xmax=None, alpha=1., xlabel=None, ylabel=None):
+def profile_altitude_local_mean(ds_list, var, alt_var='altitude_agl', obs_ds_list=None, figsize=(6,8), ax=None, title=None, altmin=-0, altmax=2000, nbins=None, substract_gl=True, xmin=None, xmax=None, alpha=1., xlabel=None, ylabel=None):
     if ax is None:
         fig, ax = plt.subplots(figsize=figsize)
 
+    
     for ds in ds_list:
-        if 'time' in ds.dims:
+        if 'time' in ds[alt_var].dims:
             # print('Computing temporal mean')
             # Compute the mean if there are multiple time points
-            if substract_gl:
-                altitude = ds['geoph'].mean(dim='time').compute() - ds['ground_level'].mean(dim='time').compute().item()
+            if substract_gl and 'ground_level' in ds:
+                altitude = ds[alt_var].mean(dim='time').compute() - ds['ground_level'].mean(dim='time').compute().item()
             else:
-                altitude = ds['geoph'].mean(dim='time').compute()
+                altitude = ds[alt_var].mean(dim='time').compute()
 
-            plotvar = ds[var].mean(dim='time').compute()
         else:
             # Use the data directly if 'time' dimension is not present
             # print('No time dimension used')
-            if substract_gl:
-                altitude = ds['geoph'] - ds['ground_level'].item()
+            if substract_gl and 'ground_level' in ds:
+                altitude = ds[alt_var] - ds['ground_level'].item()
             else:
-                altitude = ds['geoph']
+                altitude = ds[alt_var]
 
+        if 'time' in ds[var].dims:
+            # print('Computing temporal mean')
+            plotvar = ds[var].mean(dim='time').compute()
+        else:
             plotvar = ds[var]
 
         x_var = plotvar.values
@@ -355,7 +361,7 @@ def profile_altitude_local_timestamp(ds_list, var, timestamp,  obs_ds_list=None,
     if obs_ds_list is not None:
         profile_altitude_obs(obs_ds_list, var, ax=ax, title=title, altmin=altmin, altmax=altmax, substract_gl=substract_gl, nbins=nbins)
     
-def profile_altitude_multipletimes_mean(ds_list, var, times, altmin=0, altmax=2000, xmin=None, xmax=None, substract_gl=True, simfreq='1h'):
+def profile_altitude_multipletimes_mean(ds_list_lmdz, var, times, ds_list_mesoNH=None, altmin=0, altmax=2000, xmin=None, xmax=None, substract_gl=True, simfreq='1h', quantiles=None, quantiles_color='orange'):
     n_ax = len(times)
     fig, axs = plt.subplots(1, n_ax, figsize=(4*n_ax, 7))
     # Flatten axs only if it's an array (i.e., more than one subplot)
@@ -371,7 +377,9 @@ def profile_altitude_multipletimes_mean(ds_list, var, times, altmin=0, altmax=20
         title = f"{var} at {hour}"
         
         # Filter datasets by the specified time and plot
-        ds_list_tmp = [ds.where(ds['time_decimal']==time) for ds in ds_list]
+        ds_list_tmp = [ds.where(ds['time_decimal']==time) for ds in ds_list_lmdz]
+        if ds_list_mesoNH is not None:
+            ds_list_tmp += [ds.where(ds['time_decimal']==(time-offset)) for ds in ds_list_mesoNH]
         profile_altitude_local_mean(ds_list_tmp,
                                     var,
                                     ax=axes[i],
@@ -382,6 +390,17 @@ def profile_altitude_multipletimes_mean(ds_list, var, times, altmin=0, altmax=20
                                     xmin=xmin, 
                                     xmax=xmax
                                     )
+        
+        if quantiles is not None:
+            q25=quantiles[0]
+            q75=quantiles[1]
+            q25 = q25.where(q25['time_decimal'] == (time-offset), drop=True)
+            q75 = q75.where(q75['time_decimal'] == (time-offset), drop=True)
+            altvals = q25['altitude_agl'][:,0]
+            q25 = q25[var][0,:]
+            q75 = q75[var][0,:]
+            axes[i].fill_betweenx(altvals, q25, q75, color=quantiles_color, alpha=0.3)
+
         plt.tight_layout()
 
 def profile_altitude_multipletimes_mean_singleplot(ds, var, times, altmin=0, altmax=2000, xmin=None, xmax=None, substract_gl=True, title=None):
@@ -453,8 +472,8 @@ def profile_altitude_obs(ds_list, var, figsize=(6,8), ax=None, title=None, altmi
                              xmin=xmin, xmax=xmax, ymin=altmin, ymax=altmax,
                              linestyle=ds.attrs.get('linestyle', None),
                              color=ds.attrs.get('plot_color', None))
-        
-def profile_altitude_multipletimes_obs(ds_list, obs_dict, var, times, altmin=0, altmax=2000, xmin=None, xmax=None, substract_gl=True, simfreq='1h', title=None, altsite=0, xlabel=None, ylabel=None):
+
+def profile_altitude_multipletimes_obs(ds_list_lmdz,  obs_dict, var, times, ds_list_mesoNH=None, altmin=0, altmax=2000, xmin=None, xmax=None, substract_gl=True, simfreq='1h', title=None, altsite=0, xlabel=None, ylabel=None, quantiles=None, quantiles_color='orange'):
     n_ax = len(times)
     fig, axs = plt.subplots(1, n_ax, figsize=(4*n_ax, 7))
     fig.suptitle(title)
@@ -484,7 +503,9 @@ def profile_altitude_multipletimes_obs(ds_list, obs_dict, var, times, altmin=0, 
                              )
         
         # Filter datasets by the specified time and plot
-        ds_list_tmp = [ds.where(ds['time_decimal']==time) for ds in ds_list]
+        ds_list_tmp = [ds.where(ds['time_decimal']==time) for ds in ds_list_lmdz]
+        if ds_list_mesoNH is not None:
+            ds_list_tmp += [ds.where(ds['time_decimal']==(time-offset)) for ds in ds_list_mesoNH]
         profile_altitude_local_mean(ds_list_tmp,
                                     var,
                                     ax=axes[i],
@@ -498,6 +519,16 @@ def profile_altitude_multipletimes_obs(ds_list, obs_dict, var, times, altmin=0, 
                                     ylabel=ylabel if i == 0 else None,  # Only set ylabel for the first plot
                                     )
         
+        if quantiles is not None:
+            q25=quantiles[0]
+            q75=quantiles[1]
+            q25 = q25.where(q25['time_decimal'] == (time-offset), drop=True)
+            q75 = q75.where(q75['time_decimal'] == (time-offset), drop=True)
+            altvals = q25['altitude_agl'][:,0]
+            q25 = q25[var][0,:]
+            q75 = q75[var][0,:]
+            axes[i].fill_betweenx(altvals, q25, q75, color=quantiles_color, alpha=0.3)
+
         plt.tight_layout()
 
 def profile_humidity(ds):

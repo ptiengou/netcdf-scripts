@@ -99,6 +99,49 @@ def nice_map(plotvar, ax, cmap=myvir, vmin=None, vmax=None, poly=None, sig_mask=
 
     plt.tight_layout()
 
+def map_aridity_index(ds_lmdz, ds_orc, clabel=None, left_labels=True):
+    fig = plt.figure(figsize=default_map_figsize)
+    ax = plt.axes(projection=ccrs.PlateCarree())    
+    # gs = gridspec.GridSpec(2, 2, figure=fig)
+    # ax = fig.add_subplot(gs[0, 0], projection=ccrs.PlateCarree()) 
+
+    #Calcul des indices d'aridité annuels
+    precip = ds_lmdz['precip'].mean('time')
+    evapot = ds_orc['evapot_corr'].mean('time') 
+    plotvar = (precip / evapot)
+
+    bounds = [0, 0.05, 0.2, 0.5, 0.65, 1]
+    colors = ['red', 'orange', 'yellow', 'lightskyblue', 'blue']
+    labels = ["Hyper-arid", "Arid", "Semi-arid", "Dry sub-humid", "Humid"]
+    cmap = mcolors.ListedColormap(colors)
+    norm = mcolors.BoundaryNorm(bounds, cmap.N)
+
+    # Map background
+    ax.coastlines()
+    ax.add_feature(cfeature.RIVERS)
+    gl = ax.gridlines(draw_labels=True, dms=False, x_inline=False, y_inline=False, alpha=0.8)
+    gl.right_labels = False
+    gl.left_labels = left_labels
+    gl.top_labels = False
+    gl.xlocator = plt.MaxNLocator(8)
+    gl.ylocator = plt.MaxNLocator(9)
+
+    # Main plot (disable auto colorbar)
+    plot_obj = plotvar.plot(
+        ax=ax, transform=ccrs.PlateCarree(),
+        cmap=cmap, norm=norm, add_colorbar=False
+    )
+
+    # Make legend patches
+    patches = [mpatches.Patch(color=cmap(i), label=labels[i]) for i in range(len(labels))]
+    legend = ax.legend(
+        handles=patches, title=clabel,
+        loc='lower right', frameon=True, fontsize=9
+    )
+
+    plt.tight_layout()
+    return plot_obj
+
 def map_plotvar(plotvar, vmin=None, vmax=None, cmap=myvir, clabel=None, figsize=default_map_figsize, title=None, poly=None, hex=False, hex_center=False):
     fig = plt.figure(figsize=figsize)
     ax = plt.axes(projection=ccrs.PlateCarree())
@@ -137,7 +180,11 @@ def map_diff_ave(ds1, ds2, var, vmin=None, vmax=None, cmap=emb, figsize=default_
                  sig=False, sig_method=0 , pvalue=0.05, hatch='//', sig_viz=6, check_norm=False, n_ticks=6):
     fig = plt.figure(figsize=figsize)
     ax = plt.axes(projection=ccrs.PlateCarree())
-    diff = (ds1[var]-ds2[var]).mean(dim='time')
+    if 'time' in ds1[var].dims:
+        diff = (ds1[var].mean(dim='time') - ds2[var].mean(dim='time'))
+    else:
+        # If no time dimension, just compute the difference directly
+        diff = (ds1[var]-ds2[var])
 
     if sig:
         sig_mask = compute_sig_mask(ds1, ds2, var, check_norm=check_norm, method=sig_method, pvalue=pvalue)
@@ -289,7 +336,12 @@ def compute_kstest_pvalues(ds, var, pvalue):
 def map_rel_diff_ave(ds1, ds2, var, vmin=None, vmax=None, cmap=emb, title=None, clabel=None, figsize=default_map_figsize, hex=False, hex_center=False):
     fig = plt.figure(figsize=figsize)
     ax = plt.axes(projection=ccrs.PlateCarree())
-    rel_diff = ((ds1[var]-ds2[var]).mean(dim='time') / (ds2[var].mean(dim='time'))) * 100
+    if 'time' in ds1[var].dims:
+        # Calculate the relative difference as a percentage
+        rel_diff = ((ds1[var].mean(dim='time') - ds2[var].mean(dim='time')) / ds2[var].mean(dim='time')) * 100
+    else:
+        # If no time dimension, just compute the relative difference directly
+        rel_diff = ((ds1[var] - ds2[var]) / ds2[var]) * 100
 
     nice_map(rel_diff, ax, cmap=cmap, vmin=vmin, vmax=vmax, clabel=clabel)
     if hex:

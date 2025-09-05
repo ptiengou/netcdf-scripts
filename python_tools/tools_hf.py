@@ -37,7 +37,7 @@ def format_lmdz_HF(filename, color, name):
 
     #make ovap unit g/kg
     ds['ovap'] = ds['ovap']*1000
-    ds['ovap'].attrs['units'] = 'g/kg'
+    ds['ovap'].attrs['units'] = 'g kg⁻¹'
     ds['ovap'].attrs['long_name'] = 'Specific humidity'
     #same for q2m
     ds['q2m'] = ds['q2m']*1000
@@ -58,9 +58,13 @@ def format_lmdz_HF(filename, color, name):
         rename_dict2={'rsds':'SWdnSFC',
                       'rlds':'LWdnSFC'}
         ds=ds.rename(rename_dict2)
-        #add units
+
+    if 'SWdnSFC' in ds:
         ds['SWdnSFC'].attrs['units'] = 'W m⁻²'
+        ds['SWdnSFC'].attrs['long_name'] = 'Surface SW down'
+    if 'LWdnSFC' in ds:
         ds['LWdnSFC'].attrs['units'] = 'W m⁻²'
+        ds['LWdnSFC'].attrs['long_name'] = 'Surface LW down'
 
     # ds = compute_grid_cell_width(ds)
     # ds = add_moisture_divergence(ds)
@@ -75,7 +79,7 @@ def format_lmdz_HF(filename, color, name):
     ds['rh2m'].attrs['long_name'] = '2-m relative humidity'
 
     #change units to W m⁻² rather than W/m2
-    for var in ['sens', 'flat', 'swnet', 'lwnet', 'Qg']:
+    for var in ['sens', 'flat', 'SWdnSFC', 'LWdnSFC', 'swnet', 'lwnet', 'Qg']:
         if var in ds:
             ds[var].attrs['units'] = 'W m⁻²'
     return ds

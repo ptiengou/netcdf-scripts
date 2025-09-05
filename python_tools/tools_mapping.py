@@ -1,4 +1,5 @@
 from tools import *
+# from tools_LIAISE import plot_liaise_site_loc
 
 lon_min=-10
 lon_max=4
@@ -142,6 +143,33 @@ def map_aridity_index(ds_lmdz, ds_orc, clabel=None, left_labels=True):
     plt.tight_layout()
     return plot_obj
 
+def compute_aridity_index_change(ds_lmdz1, ds_orc1, ds_lmdz2, ds_orc2):
+    """
+    Compute the absolute and relative changes in Aridity Index between two cases.
+
+    Parameters:
+    - ds_lmdz1, ds_orc1: xarray.Dataset for case 1
+    - ds_lmdz2, ds_orc2: xarray.Dataset for case 2
+
+    Returns:
+    - absolute_change: xarray.DataArray of the absolute difference in Aridity Index
+    - relative_change: xarray.DataArray of the relative difference in Aridity Index
+    """
+    # Calculate Aridity Index for case 1 and case 2
+    precip1 = ds_lmdz1['precip'].mean('time')
+    evapot1 = ds_orc1['evapot_corr'].mean('time')
+    aridity_index1 = precip1 / evapot1
+
+    precip2 = ds_lmdz2['precip'].mean('time')
+    evapot2 = ds_orc2['evapot_corr'].mean('time')
+    aridity_index2 = precip2 / evapot2
+
+    # Compute absolute and relative changes
+    absolute_change = aridity_index2 - aridity_index1
+    relative_change = (aridity_index2 - aridity_index1) / aridity_index1 * 100  # in percent
+
+    return absolute_change, relative_change
+
 def map_plotvar(plotvar, vmin=None, vmax=None, cmap=myvir, clabel=None, figsize=default_map_figsize, title=None, poly=None, hex=False, hex_center=False):
     fig = plt.figure(figsize=figsize)
     ax = plt.axes(projection=ccrs.PlateCarree())
@@ -153,7 +181,7 @@ def map_plotvar(plotvar, vmin=None, vmax=None, cmap=myvir, clabel=None, figsize=
     elif title:
         plt.title(title)
 
-def map_ave(ds, var, vmin=None, vmax=None, cmap=myvir, multiplier=1, figsize=default_map_figsize, clabel=None, hex=False, hex_center=False, title=None, poly=None):
+def map_ave(ds, var, vmin=None, vmax=None, cmap=myvir, multiplier=1, figsize=default_map_figsize, clabel=None, hex=False, hex_center=False, title=None, poly=None, add_liaise=False):
     fig = plt.figure(figsize=figsize)
     ax = plt.axes(projection=ccrs.PlateCarree())
     #check if time dimension exists
@@ -175,6 +203,8 @@ def map_ave(ds, var, vmin=None, vmax=None, cmap=myvir, multiplier=1, figsize=def
             plt.title(ds[var].attrs['long_name'] + ' (' + ds[var].attrs['units'] + ')')
         else:
             plt.title(var + ' (' + ds[var].attrs['units'] + ')')
+    if add_liaise:
+        plot_liaise_site_loc(ax)
 
 def map_diff_ave(ds1, ds2, var, vmin=None, vmax=None, cmap=emb, figsize=default_map_figsize, title=None, clabel=None, hex=False, hex_center=False,
                  sig=False, sig_method=0 , pvalue=0.05, hatch='//', sig_viz=6, check_norm=False, n_ticks=6):
@@ -394,13 +424,19 @@ def map_wind(ds, ax=None, extra_var='wind speed', extra_ds=None, height='10m', v
         ax = plt.axes(projection=ccrs.PlateCarree())
     else:
         ax=ax
-    windvar_u=ds['u'+height].mean(dim='time')
-    windvar_v=ds['v'+height].mean(dim='time')
+    if 'time' in ds.dims:
+        windvar_u=ds['u'+height].mean(dim='time')
+        windvar_v=ds['v'+height].mean(dim='time')
+    else:
+        windvar_u=ds['u'+height]
+        windvar_v=ds['v'+height]
     #show extra_var in background color
     if extra_var=='wind speed':
         plotvar = (windvar_u**2 + windvar_v**2 ) ** (1/2)
     else:
-        plotvar = extra_ds[extra_var].mean(dim='time')
+        if 'time' in extra_ds.dims:
+            extra_var = extra_ds[extra_var].mean(dim='time')
+        plotvar = extra_ds[extra_var]
     nice_map(plotvar, ax, cmap=cmap, vmin=vmin, vmax=vmax, clabel=clabel)
 
     #plot wind vectors
@@ -411,12 +447,12 @@ def map_wind(ds, ax=None, extra_var='wind speed', extra_ds=None, height='10m', v
     quiver = ax.quiver(longi, lati, windx, windy, transform=ccrs.PlateCarree(), scale=scale)
 
     quiverkey_scale = scale/10
-    plt.quiverkey(quiver, X=0.93, Y=0.08, U=quiverkey_scale, label='{} m/s'.format(quiverkey_scale), labelpos='S')
+    plt.quiverkey(quiver, X=0.93, Y=0.08, U=quiverkey_scale, label='{} m s⁻¹'.format(quiverkey_scale), labelpos='S')
 
     if (height == '10m'):
-        plt.title('10m wind (m/s) and {}'.format(extra_var))
+        plt.title('10m wind (m s⁻¹) and {}'.format(extra_var))
     else :
-        plt.title('{} hPa wind (m/s) and {}'.format(height, extra_var))
+        plt.title('{} hPa wind (m s⁻¹) and {}'.format(height, extra_var))
 
 def map_wind_diff(ds1, ds2, height='10m', figsize=default_map_figsize, vmin=None, vmax=None, cmap=emb, dist=6, scale=100, hex=False, hex_center=False):
     fig = plt.figure(figsize=figsize)
@@ -440,12 +476,12 @@ def map_wind_diff(ds1, ds2, height='10m', figsize=default_map_figsize, vmin=None
     quiver = ax.quiver(longi, lati, windx, windy, transform=ccrs.PlateCarree(), scale=scale)
 
     quiverkey_scale = scale/10
-    plt.quiverkey(quiver, X=0.93, Y=0.08, U=quiverkey_scale, label='{} m/s'.format(quiverkey_scale), labelpos='S')
+    plt.quiverkey(quiver, X=0.93, Y=0.08, U=quiverkey_scale, label='{} m s⁻¹'.format(quiverkey_scale), labelpos='S')
 
     if (height == '10m'):
-        plt.title('10m wind speed (m/s) and direction change ({} - {})'.format(ds1.name, ds2.name))
+        plt.title('10m wind speed (m s⁻¹) and direction change ({} - {})'.format(ds1.name, ds2.name))
     else :
-        plt.title('{} hPa wind speed (m/s) and direction change ({} - {})'.format(height, ds1.name, ds2.name))
+        plt.title('{} hPa wind speed (m s⁻¹) and direction change ({} - {})'.format(height, ds1.name, ds2.name))
 
 def map_moisture_transport(ds, extra_var='norm', figsize=default_map_figsize, cmap=reds, vmin=None, vmax=None, dist=6, scale=100, poly=None):
     fig = plt.figure(figsize=figsize)
@@ -467,10 +503,10 @@ def map_moisture_transport(ds, extra_var='norm', figsize=default_map_figsize, cm
     quiver = ax.quiver(longi, lati, windx, windy, transform=ccrs.PlateCarree(), scale=scale)
 
     quiverkey_scale = scale/10
-    plt.quiverkey(quiver, X=0.95, Y=0.05, U=quiverkey_scale, label='{} kg/m/s'.format(quiverkey_scale), labelpos='S')
+    plt.quiverkey(quiver, X=0.95, Y=0.05, U=quiverkey_scale, label='{} kg/m s⁻¹'.format(quiverkey_scale), labelpos='S')
 
     # plt.title('Moisture transport ({})'.format(extra_var))
-    plt.title('Moisture transport (kg/m/s)')
+    plt.title('Moisture transport (kg/m s⁻¹)')
 
 def map_moisture_transport_diff(ds1, ds2, figsize=default_map_figsize, cmap=emb, vmin=None, vmax=None, dist=6, scale=100, poly=None):
     fig = plt.figure(figsize=figsize)
@@ -493,10 +529,10 @@ def map_moisture_transport_diff(ds1, ds2, figsize=default_map_figsize, cmap=emb,
     quiver = ax.quiver(longi, lati, windx, windy, transform=ccrs.PlateCarree(), scale=scale)
 
     quiverkey_scale = scale/10
-    plt.quiverkey(quiver, X=0.95, Y=0.05, U=quiverkey_scale, label='{} kg/m/s'.format(quiverkey_scale), labelpos='S')
+    plt.quiverkey(quiver, X=0.95, Y=0.05, U=quiverkey_scale, label='{} kg/m s⁻¹'.format(quiverkey_scale), labelpos='S')
 
     # plt.title('Moisture transport ({})'.format(extra_var))
-    plt.title('Moisture transport change (kg/m/s)')
+    plt.title('Moisture transport change (kg/m s⁻¹)')
 
 #hexagons
 def _destination_point(lon, lat, bearing, distance_km):

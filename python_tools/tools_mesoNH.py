@@ -4,6 +4,11 @@ from tools_LIAISE import *
 from tools_hf import *
 
 
+lon_min_mesoNH=-3.4
+lon_max_mesoNH=4
+lat_min_mesoNH=40.5
+lat_max_mesoNH=43.5
+
 ##DATASETS##
 def subset_dataset_by_lon_lat_box(ds_input, lon_min, lon_max, lat_min, lat_max):
     """
@@ -241,11 +246,11 @@ def nice_map_mesoNH(data_to_plot, vmin=None, vmax=None, cmap='viridis',
     ax.coastlines()
     ax.add_feature(cfeature.RIVERS, edgecolor='blue', linewidth=0.5)
 
-    gl=ax.gridlines(draw_labels=True, dms=False, x_inline=False, y_inline=False, alpha=0.)
+    gl=ax.gridlines(draw_labels=True, dms=False, x_inline=False, y_inline=False, alpha=0.9)
     gl.right_labels = False
-    gl.left_labels = False
+    gl.left_labels = True
     gl.top_labels = False
-    gl.bottom_labels = False
+    gl.bottom_labels = True
     gl.xlocator = plt.MaxNLocator(8)
     gl.ylocator = plt.MaxNLocator(9)
     if title:
@@ -409,7 +414,8 @@ def time_series_lonlat_mesoNH(ds, var, lon, lat, figsize=(7.5, 4), vmin=None, vm
     
 
 def bins_timestamp(ds, var, timestamp, nbins=10,
-                   xmin=None, xmax=None):
+                   xmin=None, xmax=None, ylim=None,
+                     ds_list=None, site=None):
     """
     Make a histogram of the values of a variable at a given timestamp.
     """
@@ -428,15 +434,31 @@ def bins_timestamp(ds, var, timestamp, nbins=10,
     
     # Create histogram
     hist, edges = np.histogram(values, bins=bins)
-    
+    hist = hist / np.sum(hist) * 100.0
 
     # Plot histogram
     plt.figure(figsize=(7.5, 4.5))
-    plt.bar(edges[:-1], hist, width=np.diff(edges), edgecolor='black', align='edge')
+    plt.bar(edges[:-1], hist, width=np.diff(edges), edgecolor='black', align='edge',
+            color='orange',  # e.g., 'blue', '#FF5733', etc.
+            alpha=0.3                 # Transparency: 0 (fully transparent) to 1 (fully opaque)
+            )
+    if ylim is not None:
+        plt.ylim(ylim)
     plt.xlabel(var)
     plt.ylabel('Frequency (%)')
-    plt.title(f'Distribution of {var} at {timestamp}')
+    plt.title(f'Distribution of {var} at {timestamp} {site}')
     plt.grid()
+
+    #show the mean
+    ds_mean=ds[var].mean(dim=['ni','nj'])
+    plt.scatter(ds_mean, 2, color=ds.attrs['plot_color'] )
+
+    if ds_list is not None:
+        for ds1 in ds_list:
+            ds1_val=ds1.sel(time=timestamp, method='nearest')[var]
+            color=ds1.attrs['plot_color']
+            #show a dot for ds1_val on x_axis of plot
+            plt.scatter(ds1_val, 2, color=color)
     plt.show()
 
 def bins_hour(ds, var, hour, nbins=10,

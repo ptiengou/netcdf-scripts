@@ -57,7 +57,7 @@ plt.rcParams.update(
                 ]
             ) * cycler(alpha=[0.8]),
             'scatter.marker': 'x',
-            'lines.linewidth': 3.0,
+            'lines.linewidth': 2.0,
         })
 # rivers = cfeature.NaturalEarthFeature('physical', 'rivers_lake_centerlines', '10m',edgecolor=(0, 0, 0, 0.3), facecolor='none')
 letters=['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
@@ -334,7 +334,7 @@ def add_wind_10m(ds: xr.Dataset) -> xr.Dataset:
 
     # Set attributes for the wind speed DataArray
     wind_speed_10m.attrs['long_name'] = 'Wind speed at 10m'
-    wind_speed_10m.attrs['units'] = 'm/s'
+    wind_speed_10m.attrs['units'] = 'm s⁻¹'
 
     # Add the wind speed to the dataset
     ds['wind_speed_10m'] = wind_speed_10m
@@ -490,6 +490,39 @@ def add_specific_humidity_from_mixing_ratio(ds, mixing_ratio_var='RVT', specific
     ds[specific_humidity_var].attrs['units'] = 'g kg⁻¹'
     ds[specific_humidity_var].attrs['long_name'] = 'Specific humidity'
     ds[specific_humidity_var].attrs['description'] = 'Specific Humidity calculated from mixing ratio'
+    
+    return ds
+
+def extract_var_presniv(ds, var, presniv, newname=None):
+    """
+    Extract a variable at a specific pressure level from the dataset.
+    
+    Parameters:
+        ds (xarray.Dataset): Input dataset containing the variable and 'presnivs'.
+        var (str): Name of the variable to extract.
+        presniv (float): Pressure level in Pa to extract the variable at.
+    
+    Returns:
+        xarray.DataArray: The extracted variable at the specified pressure level.
+    """
+    if var not in ds:
+        raise ValueError(f"Variable '{var}' not found in the dataset.")
+    if 'presnivs' not in ds:
+        raise ValueError("Variable 'presnivs' not found in the dataset.")
+    
+    # Find the index of the closest pressure level
+    pres_levels = ds['presnivs']
+    closest_level = pres_levels.sel(presnivs=presniv, method='nearest')
+    
+    # Extract the variable at the closest pressure level
+    var_at_level = ds[var].sel(presnivs=closest_level)
+    
+    if newname:
+        newvarname = newname
+    else:
+        newvarname = f"{var}_{int(presniv/100)}"
+    
+    ds[newvarname] = var_at_level
     
     return ds
 

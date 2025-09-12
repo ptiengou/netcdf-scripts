@@ -89,9 +89,11 @@ redsW = make_cmap_white('Reds', 10)
 greens = ListedColormap(mpl.colormaps['Greens'](np.linspace(0, 1, 10)))
 greensW = make_cmap_white('Greens', 10)
 blues = ListedColormap(mpl.colormaps['Blues'](np.linspace(0, 1, 10)))
+blues8 = ListedColormap(mpl.colormaps['Blues'](np.linspace(0, 1, 8)))
 bluesW = make_cmap_white('Blues', 10)
 greys = ListedColormap(mpl.colormaps['Greys'](np.linspace(0, 1, 10)))
 wet = ListedColormap(mpl.colormaps['YlGnBu'](np.linspace(0, 1, 10)))
+wet8 = ListedColormap(mpl.colormaps['YlGnBu'](np.linspace(0, 1, 8)))
 wetW = make_cmap_white('YlGnBu', 10)
 bad_good=ListedColormap(mpl.colormaps['RdYlGn'](np.linspace(0, 1, 10)))
 good_bad=ListedColormap(mpl.colormaps['RdYlGn_r'](np.linspace(0, 1, 10)))
@@ -884,6 +886,8 @@ def compute_mean(ds_list, var):
 ### time plots ###
 months_name_list=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
 
+import matplotlib.dates as mdates
+
 def nice_time_plot(plotvar, ax, label=None, title=None, ylabel=None, xlabel=None, color=None, vmin=None, vmax=None, xmin=None, xmax=None, linestyle='-', legend_out=False):
     plotvar.plot(ax=ax, label=label, color=color, linestyle=linestyle)
     if not (title=='off'):
@@ -892,6 +896,11 @@ def nice_time_plot(plotvar, ax, label=None, title=None, ylabel=None, xlabel=None
         ax.set_title('')
     ax.set_ylabel(ylabel)
     ax.set_xlabel(xlabel)
+    #show date
+    ax.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M'))
+    start_date = plotvar.time.values[0].astype('datetime64[D]')
+    ax.text(0.01, -0.15, start_date.astype('datetime64[D]').item().strftime('%Y-%b-%d'),
+            transform=ax.transAxes, ha='left', va='bottom', fontweight=100, fontsize=14, fontname='DejaVu Sans')
     if vmin is not None:
         if vmax is not None:
             ax.set_ylim(vmin, vmax)

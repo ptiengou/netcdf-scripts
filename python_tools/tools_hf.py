@@ -204,7 +204,8 @@ def energy_budget_dc(ds_lmdz1, ds_lmdz2, ds_orc1, ds_orc2, title=None, lab1=None
 ## VERTICAL PROFILES ##
 
 #generic function
-def profile_altitudes_ax(ax, x_var, y_coord, nbins=None, plot_label='', title=None, xlabel=None, ylabel=None, xmin=None, xmax=None, ymin=None, ymax=None, linestyle=None, color=None, alpha=1):
+def profile_altitudes_ax_v0(ax, x_var, y_coord, nbins=None, plot_label='', title=None, xlabel=None, ylabel=None, xmin=None, xmax=None, ymin=None, ymax=None, linestyle=None, color=None, alpha=1):
+    # print('Entering profile_altitudes_ax, ylabel is', ylabel)
     # Ensure x_var and y_coord are numpy arrays for masking
     x_var = np.asarray(x_var)
     y_coord = np.asarray(y_coord)
@@ -235,6 +236,79 @@ def profile_altitudes_ax(ax, x_var, y_coord, nbins=None, plot_label='', title=No
         ax.set_xlabel(xlabel)
     if ylabel is not None:
         ax.set_ylabel(ylabel)
+        print('ylabel set to', ylabel)
+    else:
+        print('ylabel not set')
+    ax.set_xlim(xmin, xmax)
+    ax.set_ylim(ymin, ymax)
+    # Adjust x-axis tick labels to avoid overlap
+    if nbins is not None:
+        ax.xaxis.set_major_locator(plt.MaxNLocator(nbins=nbins))
+    # plt.xticks(rotation=45)  # Rotate labels
+    ax.legend()
+    ax.grid(True)
+
+def profile_altitudes_ax(ax, x_var, y_coord, nbins=None, plot_label='', title=None, xlabel=None, ylabel=None, xmin=None, xmax=None, ymin=None, ymax=None, linestyle=None, color=None, alpha=1, show_yticklabels=True):
+    """
+    Plots vertical profiles on a given Matplotlib axes object.
+
+    Parameters:
+    ax (matplotlib.axes.Axes): The axes object to plot on.
+    x_var (array-like): The data for the x-axis.
+    y_coord (array-like): The data for the y-axis (Altitude).
+    nbins (int): Number of bins for the x-axis tick locator.
+    plot_label (str): Label for the plot line.
+    title (str): Title of the plot.
+    xlabel (str): Label for the x-axis.
+    ylabel (str): Label for the y-axis.
+    xmin (float): Minimum value for the x-axis.
+    xmax (float): Maximum value for the x-axis.
+    ymin (float): Minimum value for the y-axis.
+    ymax (float): Maximum value for the y-axis.
+    linestyle (str): Style of the plot line.
+    color (str): Color of the plot line.
+    alpha (float): Transparency of the plot line.
+    show_ylabel_text (bool): Whether to display the y-axis label. Defaults to True.
+    show_yticklabels (bool): Whether to display the y-axis tick labels (the numbers). Defaults to True.
+    """
+
+    # Ensure x_var and y_coord are numpy arrays for masking
+    x_var = np.asarray(x_var)
+    y_coord = np.asarray(y_coord)
+
+    # Check if x_var and y_coord have the same size
+    if x_var.shape != y_coord.shape:
+        raise ValueError("x_var and y_coord must have the same shape.")
+
+    # Create a mask for y_coord values within the specified range
+    if ymin is not None and ymax is not None:
+        mask = (y_coord >= ymin) & (y_coord <= ymax)
+    elif ymin is not None:
+        mask = (y_coord >= ymin)
+    elif ymax is not None:
+        mask = (y_coord <= ymax)
+    else:
+        mask = np.ones_like(y_coord, dtype=bool)  # No masking if ymin and ymax are None
+
+    # Apply the mask to both x_var and y_coord
+    x_var = x_var[mask]
+    y_coord = y_coord[mask]
+    
+    #plotting
+    ax.plot(x_var, y_coord, label=plot_label, color=color, linestyle=linestyle, alpha=alpha)
+    if title is not None:
+        ax.set_title(title)
+    if xlabel is not None:
+        ax.set_xlabel(xlabel)
+
+    # Conditionally set the y-axis label
+    if ylabel is not None:
+        ax.set_ylabel(ylabel)
+            
+    # Conditionally remove the y-axis tick labels
+    if not show_yticklabels:
+        ax.set_yticklabels([])
+
     ax.set_xlim(xmin, xmax)
     ax.set_ylim(ymin, ymax)
     # Adjust x-axis tick labels to avoid overlap
@@ -280,7 +354,8 @@ def profile_preslevs_local(ds_list, var, figsize=(6,8), preslevelmax=20, title=N
     ax.legend()
 
 #plot a profile from 3D variable with altitude as y_coord
-def profile_altitude_local_mean(ds_list, var, alt_var='altitude_agl', obs_ds_list=None, figsize=(6,8), ax=None, title=None, altmin=-0, altmax=2000, nbins=None, substract_gl=True, xmin=None, xmax=None, alpha=1., xlabel=None, ylabel=None):
+def profile_altitude_local_mean(ds_list, var, alt_var='altitude_agl', obs_ds_list=None, figsize=(6,8), ax=None, title=None, altmin=-0, altmax=2000, nbins=None, substract_gl=True, xmin=None, xmax=None, alpha=1., xlabel=None, ylabel=None, show_yticklabels=True):
+    # print('Entering profile_altitude_local_mean, ylabel is', ylabel)
     if ax is None:
         fig, ax = plt.subplots(figsize=figsize)
 
@@ -323,18 +398,21 @@ def profile_altitude_local_mean(ds_list, var, alt_var='altitude_agl', obs_ds_lis
                 xlabel = var
         #ylabel
         if ylabel is None:
-            ylabel = ('Height agl (m)' if substract_gl else 'Altitude (m)')
-        if ylabel is False:
-            ylabel = None
+            ylabel_out = ('Height agl (m)' if substract_gl else 'Altitude (m)')
+        elif ylabel is False:
+            ylabel_out = None
+        else:
+            ylabel_out = ylabel
         # Plot the profile
         profile_altitudes_ax(ax, x_var, y_coord, nbins=nbins, plot_label=plot_label, title=title,
                              xlabel=xlabel, 
-                             ylabel=('Height agl (m)' if substract_gl else 'Altitude (m)'),
+                             ylabel=ylabel_out,
                              xmin=xmin, xmax=xmax, ymin=altmin, ymax=altmax,
                             #  linestyle=ds.attrs.get('linestyle', None),
                              color=ds.attrs.get('plot_color', None),
-                             alpha=alpha)
-        
+                             alpha=alpha,
+                             show_yticklabels=show_yticklabels)
+
     if obs_ds_list is not None:
         profile_altitude_obs(obs_ds_list, var, ax=ax, title=title, altmin=altmin, altmax=altmax, substract_gl=substract_gl, nbins=nbins, xmin=xmin, xmax=xmax)
 
@@ -449,6 +527,7 @@ def profile_altitude_multipletimes_mean_singleplot(ds, var, times, altmin=0, alt
     plt.tight_layout()
 
 def profile_altitude_obs(ds_list, var, figsize=(6,8), ax=None, title=None, altmin=-0, altmax=2000, substract_gl=True, nbins=None, xmin=None, xmax=None, altsite=0):
+    # print('Entering profile altitude obs')
     if ax is None:
         fig, ax = plt.subplots(figsize=figsize)
 
@@ -470,16 +549,20 @@ def profile_altitude_obs(ds_list, var, figsize=(6,8), ax=None, title=None, altmi
             xlabel = f"{var} ({ds[var].attrs['units']})"
         else:
             xlabel = var
+        
         profile_altitudes_ax(ax, x_var, y_coord, nbins=nbins, plot_label=plot_label, title=title,
                              xlabel=xlabel, 
-                             ylabel=('Height agl (m)' if substract_gl else 'Altitude (m)'),
+                             ylabel=None,
                              xmin=xmin, xmax=xmax, ymin=altmin, ymax=altmax,
                              linestyle=ds.attrs.get('linestyle', None),
                              color=ds.attrs.get('plot_color', None))
 
-def profile_altitude_multipletimes_obs(ds_list_lmdz,  obs_dict, var, times, ds_list_mesoNH=None, altmin=0, altmax=2000, xmin=None, xmax=None, substract_gl=True, simfreq='1h', title=None, altsite=0, xlabel=None, ylabel=None, quantiles=None, quantiles_color='orange'):
+def profile_altitude_multipletimes_obs(ds_list_lmdz,  obs_dict, var, times, ds_list_mesoNH=None, altmin=0, altmax=2000, xmin=None, xmax=None, substract_gl=True, simfreq='1h', title=None, altsite=0, xlabel=None, ylabel=None, quantiles=None, quantiles_color='orange', show_yticklabels=True):
     n_ax = len(times)
-    fig, axs = plt.subplots(1, n_ax, figsize=(4*n_ax, 7))
+    if show_yticklabels:
+        fig, axs = plt.subplots(1, n_ax, figsize=(4*n_ax, 7))
+    else:
+        fig, axs = plt.subplots(1, n_ax, figsize=(3*n_ax, 7))
     fig.suptitle(title)
     # Flatten axs only if it's an array (i.e., more than one subplot)
     axes = axs.flatten() if isinstance(axs, np.ndarray) else [axs]
@@ -520,7 +603,8 @@ def profile_altitude_multipletimes_obs(ds_list_lmdz,  obs_dict, var, times, ds_l
                                     xmin=xmin, 
                                     xmax=xmax,
                                     xlabel=xlabel,
-                                    ylabel=ylabel if i == 0 else None,  # Only set ylabel for the first plot
+                                    ylabel=ylabel, #if i == 0 else 'test',  # Only set ylabel for the first plot
+                                    show_yticklabels=show_yticklabels
                                     )
         
         if quantiles is not None:

@@ -31,9 +31,9 @@ def haversine(lat1, lon1, lat2, lon2):
 ## MAPPING
 #
 def plot_ICO_from_netcdf(file, var, timestep=0, vmin=0.0, vmax=None, cmap=wet, 
-                         projection='ortho', title=None,
+                         projection='ortho', title=None, clabel=None,
                          lon_min=None, lat_min=None, lon_max=None, lat_max=None,
-                         show_grid=True, figsize=(10,6)):
+                         show_grid=True, figsize=(8,4)):
     """
     Plots a map from a NetCDF file using psyplot.
 
@@ -63,20 +63,25 @@ def plot_ICO_from_netcdf(file, var, timestep=0, vmin=0.0, vmax=None, cmap=wet,
         file,
         # time=timestep,
         name=var,
-        datagrid=dict(color='k', linewidth=0.2),
+        datagrid=dict(color='k', linewidth=0.2, alpha=1.),
         cbar='r',
         tight=True,
         lsm='50m',
         cmap=cmap,
         # extend='both',
         projection=projection,
-        title=title if title else var,
+        # title=title if title is not None else var,
         bounds=bounds,
         map_extent=map_extent,
-        ygrid=show_grid,
-        xgrid=show_grid,
+        # ygrid=show_grid,
+        # xgrid=show_grid,
+        ygrid=False,
+        xgrid=False,
+        clabel=clabel,
+
         # decode_times=False
     )
+
     # Resize the current figure after psyplot creates it
     fig = plt.gcf()  # Get the current figure used by psyplot
     fig.set_size_inches(figsize)  # Set new figure size

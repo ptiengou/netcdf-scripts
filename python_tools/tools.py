@@ -888,7 +888,7 @@ months_name_list=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','N
 
 import matplotlib.dates as mdates
 
-def nice_time_plot(plotvar, ax, label=None, title=None, ylabel=None, xlabel=None, color=None, vmin=None, vmax=None, xmin=None, xmax=None, linestyle='-', legend_out=False):
+def nice_time_plot(plotvar, ax, label=None, title=None, ylabel=None, xlabel=None, color=None, vmin=None, vmax=None, xmin=None, xmax=None, linestyle='-', legend_out=False, single_day=False):
     plotvar.plot(ax=ax, label=label, color=color, linestyle=linestyle)
     if not (title=='off'):
         ax.set_title(title)
@@ -897,10 +897,11 @@ def nice_time_plot(plotvar, ax, label=None, title=None, ylabel=None, xlabel=None
     ax.set_ylabel(ylabel)
     ax.set_xlabel(xlabel)
     #show date
-    ax.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M'))
-    start_date = plotvar.time.values[0].astype('datetime64[D]')
-    ax.text(0.01, -0.15, start_date.astype('datetime64[D]').item().strftime('%Y-%b-%d'),
-            transform=ax.transAxes, ha='left', va='bottom', fontweight=100, fontsize=14, fontname='DejaVu Sans')
+    if single_day:
+        ax.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M'))
+        start_date = plotvar.time.values[0].astype('datetime64[D]')
+        ax.text(0.01, -0.15, start_date.astype('datetime64[D]').item().strftime('%Y-%b-%d'),
+                transform=ax.transAxes, ha='left', va='bottom', fontweight=100, fontsize=14, fontname='DejaVu Sans')
     if vmin is not None:
         if vmax is not None:
             ax.set_ylim(vmin, vmax)

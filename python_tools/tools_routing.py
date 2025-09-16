@@ -685,3 +685,38 @@ def display_metric_diff_map(sim1_ds: xr.DataArray, sim2_ds:xr.DataArray, obs_ds:
     #add legend outside of the plot
     if legend:
         plt.legend(loc='upper left', bbox_to_anchor=(1.2, 1))
+
+def percent_valid_coverage(ds, start_year, end_year, time_var='time', data_var=None):
+    """
+    Calculates the percentage of valid (non-NaN) monthly values in a NetCDF time series
+    between start_year and end_year (inclusive), using an open xarray Dataset.
+
+    Parameters:
+        ds (xarray.Dataset): Opened xarray dataset.
+        start_year (int): Start year (inclusive).
+        end_year (int): End year (inclusive).
+        time_var (str): Name of the time variable.
+        data_var (str): Name of the data variable. If None, uses the first variable.
+
+    Returns:
+        float: Percentage coverage (0 to 100).
+    """
+    if data_var is None:
+        data_var = list(ds.data_vars)[0]
+    
+    data = ds[data_var]
+    time = ds[time_var]
+    years = time.dt.year
+
+    # Filter by year range
+    mask = (years >= start_year) & (years <= end_year)
+    filtered_data = data.sel({time_var: mask})
+    filtered_time = time.sel({time_var: mask})
+
+    valid_count = np.count_nonzero(~np.isnan(filtered_data))
+    total_months = filtered_time.size
+
+    if total_months == 0:
+        return 0.0
+    # print(valid_count, total_months)
+    return round((valid_count / total_months) * 100, 2)

@@ -51,6 +51,8 @@ def format_lmdz_HF(filename, color, name):
     ds['precip'].attrs['long_name'] = 'Total precipitation'
     ds['precip'].attrs['units']='mm (over 30mn)'
 
+    ds['s_pblh'] = ds['s_pblh'] - ds['ground_level']
+    
     # ds['SWdn_diff'] = ds['SWdnSFCclr'] - ds['SWdnSFC']
     # ds['SWdn_diff'].attrs['units'] = 'W m⁻²'
 
@@ -354,7 +356,7 @@ def profile_preslevs_local(ds_list, var, figsize=(6,8), preslevelmax=20, title=N
     ax.legend()
 
 #plot a profile from 3D variable with altitude as y_coord
-def profile_altitude_local_mean(ds_list, var, alt_var='altitude_agl', obs_ds_list=None, figsize=(6,8), ax=None, title=None, altmin=-0, altmax=2000, nbins=None, substract_gl=True, xmin=None, xmax=None, alpha=1., xlabel=None, ylabel=None, show_yticklabels=True):
+def profile_altitude_local_mean(ds_list, var, alt_var='altitude_agl', obs_ds_list=None, figsize=(6,8), ax=None, title=None, altmin=-0, altmax=2000, nbins=None, substract_gl=True, xmin=None, xmax=None, alpha=1., xlabel=None, ylabel=None, show_yticklabels=True, ds_linestyle=False):
     # print('Entering profile_altitude_local_mean, ylabel is', ylabel)
     if ax is None:
         fig, ax = plt.subplots(figsize=figsize)
@@ -408,7 +410,7 @@ def profile_altitude_local_mean(ds_list, var, alt_var='altitude_agl', obs_ds_lis
                              xlabel=xlabel, 
                              ylabel=ylabel_out,
                              xmin=xmin, xmax=xmax, ymin=altmin, ymax=altmax,
-                            #  linestyle=ds.attrs.get('linestyle', None),
+                             linestyle=ds.attrs.get('linestyle', None),
                              color=ds.attrs.get('plot_color', None),
                              alpha=alpha,
                              show_yticklabels=show_yticklabels)
@@ -557,7 +559,7 @@ def profile_altitude_obs(ds_list, var, figsize=(6,8), ax=None, title=None, altmi
                              linestyle=ds.attrs.get('linestyle', None),
                              color=ds.attrs.get('plot_color', None))
 
-def profile_altitude_multipletimes_obs(ds_list_lmdz,  obs_dict, var, times, ds_list_mesoNH=None, altmin=0, altmax=2000, xmin=None, xmax=None, substract_gl=True, simfreq='1h', title=None, altsite=0, xlabel=None, ylabel=None, quantiles=None, quantiles_color='orange', show_yticklabels=True):
+def profile_altitude_multipletimes_obs(ds_list_lmdz,  obs_dict, var, times, ds_list_mesoNH=None, altmin=0, altmax=2000, xmin=None, xmax=None, substract_gl=True, simfreq='1h', title=None, altsite=0, xlabel=None, ylabel=None, quantiles=None, quantiles_color='orange', show_yticklabels=True, ds_linestyle=False ):
     n_ax = len(times)
     if show_yticklabels:
         fig, axs = plt.subplots(1, n_ax, figsize=(4*n_ax, 7))
@@ -604,7 +606,8 @@ def profile_altitude_multipletimes_obs(ds_list_lmdz,  obs_dict, var, times, ds_l
                                     xmax=xmax,
                                     xlabel=xlabel,
                                     ylabel=ylabel, #if i == 0 else 'test',  # Only set ylabel for the first plot
-                                    show_yticklabels=show_yticklabels
+                                    show_yticklabels=show_yticklabels,
+                                    ds_linestyle=ds_linestyle
                                     )
         
         if quantiles is not None:

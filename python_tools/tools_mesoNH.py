@@ -129,7 +129,19 @@ def extract_pressure_surface(mesoNH_4D, mesoNH):
     mesoNH['psol'] = psol
     
     return mesoNH
-    
+
+def extract_wind_pressure(mesoNH_4D, mesoNH, pressure_level=850):
+    # Extract wind at specified pressure level
+    #find level closest to pressure_level
+    pres_levels = mesoNH_4D['PABST'].isel(time=0, nj=0, ni=0).values
+    pres_idx = np.abs(pres_levels - pressure_level *100).argmin()
+    u_name = f'u{pressure_level}'
+    v_name = f'v{pressure_level}'
+    u_level = mesoNH_4D['vitu'].isel(level=pres_idx)
+    v_level = mesoNH_4D['vitv'].isel(level=pres_idx)
+    mesoNH[u_name] = u_level
+    mesoNH[v_name] = v_level
+    return mesoNH
 
 def flux_pt_to_mass_pt(ds, only_basic_vars=True, 
                        basic_vars = [
@@ -227,11 +239,12 @@ def flux_pt_to_mass_pt(ds, only_basic_vars=True,
 
 ## MAPS ##
 
-def nice_map_mesoNH(data_to_plot, vmin=None, vmax=None, cmap='viridis', 
+def nice_map_mesoNH(data_to_plot, ax=None, vmin=None, vmax=None, cmap='viridis', 
                          add_liaise=False, title=None, label=None,
                          poly=None):
-    fig = plt.figure(figsize=(12, 4))
-    ax = fig.add_subplot(1, 1, 1, projection=ccrs.PlateCarree())
+    if ax is None:
+        fig = plt.figure(figsize=(12, 4))
+        ax = fig.add_subplot(1, 1, 1, projection=ccrs.PlateCarree())
 
     # pcolormesh can directly use the 2D 'lon' and 'lat' coordinates
     data_to_plot.plot.pcolormesh(
@@ -254,7 +267,7 @@ def nice_map_mesoNH(data_to_plot, vmin=None, vmax=None, cmap='viridis',
     gl.top_labels = False
     gl.bottom_labels = True
     gl.xlocator = plt.MaxNLocator(5)
-    gl.ylocator = plt.MaxNLocator(6)
+    gl.ylocator = plt.MaxNLocator(5)
     if title:
         if title == 'off':
             pass
@@ -367,6 +380,76 @@ def map_mesoNH_mean_restrict(ds, var, cmap='viridis', vmin=None, vmax=None, titl
         label = f'{var} ({ds[var].attrs.get("units", "")})'
     nice_map_mesoNH(data_to_plot, cmap=cmap, vmin=vmin, vmax=vmax, title=title, label=label, add_liaise=add_liaise, poly=poly)
 
+def map_wind_mesoNH(ds, ax=None, extra_var='wind speed', extra_ds=None, height='10m', title=None, vmin=None, vmax=None, figsize=default_map_figsize, cmap=reds, dist=6, scale=100, clabel=None,
+                    lon_min=None, lon_max=None, lat_min=None, lat_max=None):
+    if ax==None:
+        fig = plt.figure(figsize=figsize)
+        ax = plt.axes(projection=ccrs.PlateCarree())
+    else:
+        ax=ax
+
+    # Get the 2D lon/lat coordinates from the dataset (they have nj, ni dimensions)
+    lons_coord = ds['lon']
+    lats_coord = ds['lat']
+
+    # Apply spatial subsetting if bounds are provided
+    if lon_min is not None and lon_max is not None and \
+       lat_min is not None and lat_max is not None:
+
+        # Create a boolean mask based on the 2D lon/lat coordinates
+        # This mask will have dimensions (nj, ni)
+        spatial_mask = (lons_coord >= lon_min) & (lons_coord <= lon_max) & \
+                       (lats_coord >= lat_min) & (lats_coord <= lat_max)
+
+        # Apply the mask to the data. Values outside the region will become NaN.
+        data_to_plot = ds.where(spatial_mask)
+    else:
+        # If no subsetting is requested, use the time-selected data directly
+        data_to_plot = ds
+
+    if 'time' in data_to_plot.dims:
+        windvar_u=data_to_plot['u'+height].mean(dim='time')
+        windvar_v=data_to_plot['v'+height].mean(dim='time')
+    else:
+        windvar_u=data_to_plot['u'+height]
+        windvar_v=data_to_plot['v'+height]
+
+    #show extra_var in background color
+    if extra_var=='wind speed':
+        plotvar = (windvar_u**2 + windvar_v**2 ) ** (1/2)
+    else:
+        if 'time' in extra_ds.dims:
+            extra_var = extra_ds[extra_var].mean(dim='time')
+        plotvar = extra_ds[extra_var]
+    
+    nice_map_mesoNH(plotvar, ax, cmap=cmap,  vmin=vmin, vmax=vmax, label=clabel, poly=both_cells, title='off')
+
+    #plot wind vectors
+    windx = windvar_u[::dist,::dist]
+    # print(windx)
+    windy = windvar_v[::dist,::dist]
+    longi=data_to_plot['lon'][::dist,::dist]
+    # print(longi)
+    lati=data_to_plot['lat'][::dist,::dist]
+    quiver = ax.quiver(longi, lati, windx, windy, width=0.005, transform=ccrs.PlateCarree(), scale=scale)
+
+    quiverkey_scale = scale/10
+    # plt.quiverkey(quiver, X=0.93, Y=0.08, U=quiverkey_scale, label='{} m s⁻¹'.format(quiverkey_scale), labelpos='S',
+    #                fontproperties={'weight': 'bold', 'size': 14})
+    plt.quiverkey(quiver, X=0.77, Y=0.085, U=quiverkey_scale,
+                   label='{} m s⁻¹'.format(quiverkey_scale), labelpos='S',
+                #    fontproperties={'weight': 'bold', 'size': 14},
+                   coordinates='figure')
+    if title:
+        if title == 'off':
+            pass
+        elif title is None:     
+            if (height == '10m'):
+                plt.title('10m wind (m s⁻¹) and {}'.format(extra_var))
+            else :
+                plt.title('{} hPa wind (m s⁻¹) and {}'.format(height, extra_var))
+        else:
+            plt.title(title)
 
 
 ## Time Series ##
@@ -425,7 +508,8 @@ def time_series_lonlat_mesoNH(ds, var, lon, lat, figsize=(7.5, 4), vmin=None, vm
 def bins_timestamp(ds, var, timestamp, nbins=10,
                    xmin=None, xmax=None, ylim=None,
                    ds_list=None, site=None,
-                   xlabel=None, title=None
+                   xlabel=None, title=None,
+                   force_xticks=False
                    ):
     """
     Make a histogram of the values of a variable at a given timestamp.
@@ -474,9 +558,10 @@ def bins_timestamp(ds, var, timestamp, nbins=10,
     plt.title(title)
 
     # Set x-axis ticks: major every 100, minor every 25
-    ax = plt.gca()
-    ax.xaxis.set_major_locator(MultipleLocator(100))
-    ax.xaxis.set_minor_locator(MultipleLocator(25))
+    if force_xticks:
+        ax = plt.gca()
+        ax.xaxis.set_major_locator(MultipleLocator(100))
+        ax.xaxis.set_minor_locator(MultipleLocator(25))
 
     # Show the mean
     ds_mean = ds[var].mean(dim=['ni', 'nj']).values
@@ -484,9 +569,12 @@ def bins_timestamp(ds, var, timestamp, nbins=10,
 
     if ds_list is not None:
         for ds1 in ds_list:
-            ds1_val = ds1.sel(time=timestamp, method='nearest')[var].values
-            color = ds1.attrs['plot_color']
-            plt.scatter(ds1_val, 2, color=color)
+            if var not in ds1:
+                continue
+            else:
+                ds1_val = ds1.sel(time=timestamp, method='nearest')[var].values
+                color = ds1.attrs['plot_color']
+                plt.scatter(ds1_val, 2, color=color)
             
 def bins_hour(ds, var, hour, nbins=10,
                    xmin=None, xmax=None, title=None, xlabel=None):

@@ -84,6 +84,7 @@ emb_neutral = ListedColormap(mpl.colormaps['BrBG'](np.linspace(0, 1, 10)))
 emb_neutralW = make_cmap_white('BrBG', nbins=11, n_white=5)
 
 myvir = ListedColormap(mpl.colormaps['viridis'](np.linspace(0, 1, 10)))
+myvir8 = ListedColormap(mpl.colormaps['viridis'](np.linspace(0, 1, 8)))
 reds = ListedColormap(mpl.colormaps['Reds'](np.linspace(0, 1, 10)))
 redsW = make_cmap_white('Reds', 10)
 greens = ListedColormap(mpl.colormaps['Greens'](np.linspace(0, 1, 10)))

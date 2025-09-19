@@ -486,8 +486,12 @@ def map_wind_diff(ds1, ds2, height='10m', figsize=default_map_figsize, vmin=None
 def map_moisture_transport(ds, extra_var='norm', figsize=default_map_figsize, cmap=reds, vmin=None, vmax=None, dist=6, scale=100, poly=None):
     fig = plt.figure(figsize=figsize)
     ax = plt.axes(projection=ccrs.PlateCarree())
-    windvar_u=ds['uq'].mean(dim='time')
-    windvar_v=ds['vq'].mean(dim='time')
+    if 'time' in ds.dims:
+        windvar_u=ds['uq'].mean(dim='time')
+        windvar_v=ds['vq'].mean(dim='time')
+    else:
+        windvar_u=ds['uq']
+        windvar_v=ds['vq']
     #show extra_var in background color
     if extra_var=='norm':
         plotvar = (windvar_u**2 + windvar_v**2 ) ** (1/2)

@@ -250,7 +250,7 @@ def profile_altitudes_ax_v0(ax, x_var, y_coord, nbins=None, plot_label='', title
     ax.legend()
     ax.grid(True)
 
-def profile_altitudes_ax(ax, x_var, y_coord, nbins=None, plot_label='', title=None, xlabel=None, ylabel=None, xmin=None, xmax=None, ymin=None, ymax=None, linestyle=None, color=None, alpha=1, show_yticklabels=True):
+def profile_altitudes_ax(ax, x_var, y_coord, nbins=None, plot_label='', title=None, xlabel=None, ylabel=None, xmin=None, xmax=None, ymin=None, ymax=None, linestyle=None, color=None, alpha=1, show_yticklabels=True, show_legend=True):
     """
     Plots vertical profiles on a given Matplotlib axes object.
 
@@ -317,7 +317,8 @@ def profile_altitudes_ax(ax, x_var, y_coord, nbins=None, plot_label='', title=No
     if nbins is not None:
         ax.xaxis.set_major_locator(plt.MaxNLocator(nbins=nbins))
     # plt.xticks(rotation=45)  # Rotate labels
-    ax.legend()
+    if show_legend:
+        ax.legend()
     ax.grid(True)
 
 #plot a profile from 3D variable on pressure levels (not used)
@@ -356,7 +357,7 @@ def profile_preslevs_local(ds_list, var, figsize=(6,8), preslevelmax=20, title=N
     ax.legend()
 
 #plot a profile from 3D variable with altitude as y_coord
-def profile_altitude_local_mean(ds_list, var, alt_var='altitude_agl', obs_ds_list=None, figsize=(6,8), ax=None, title=None, altmin=-0, altmax=2000, nbins=None, substract_gl=True, xmin=None, xmax=None, alpha=1., xlabel=None, ylabel=None, show_yticklabels=True, ds_linestyle=False):
+def profile_altitude_local_mean(ds_list, var, alt_var='altitude_agl', obs_ds_list=None, figsize=(6,8), ax=None, title=None, altmin=-0, altmax=2000, nbins=None, substract_gl=True, xmin=None, xmax=None, alpha=1., xlabel=None, ylabel=None, show_yticklabels=True, ds_linestyle=False, show_legend=True):
     # print('Entering profile_altitude_local_mean, ylabel is', ylabel)
     if ax is None:
         fig, ax = plt.subplots(figsize=figsize)
@@ -413,7 +414,8 @@ def profile_altitude_local_mean(ds_list, var, alt_var='altitude_agl', obs_ds_lis
                              linestyle=ds.attrs.get('linestyle', None),
                              color=ds.attrs.get('plot_color', None),
                              alpha=alpha,
-                             show_yticklabels=show_yticklabels)
+                             show_yticklabels=show_yticklabels,
+                             show_legend=show_legend)
 
     if obs_ds_list is not None:
         profile_altitude_obs(obs_ds_list, var, ax=ax, title=title, altmin=altmin, altmax=altmax, substract_gl=substract_gl, nbins=nbins, xmin=xmin, xmax=xmax)
@@ -528,7 +530,7 @@ def profile_altitude_multipletimes_mean_singleplot(ds, var, times, altmin=0, alt
 
     plt.tight_layout()
 
-def profile_altitude_obs(ds_list, var, figsize=(6,8), ax=None, title=None, altmin=-0, altmax=2000, substract_gl=True, nbins=None, xmin=None, xmax=None, altsite=0):
+def profile_altitude_obs(ds_list, var, figsize=(6,8), ax=None, title=None, altmin=-0, altmax=2000, substract_gl=True, nbins=None, xmin=None, xmax=None, altsite=0, show_legend=True):
     # print('Entering profile altitude obs')
     if ax is None:
         fig, ax = plt.subplots(figsize=figsize)
@@ -557,9 +559,10 @@ def profile_altitude_obs(ds_list, var, figsize=(6,8), ax=None, title=None, altmi
                              ylabel=None,
                              xmin=xmin, xmax=xmax, ymin=altmin, ymax=altmax,
                              linestyle=ds.attrs.get('linestyle', None),
-                             color=ds.attrs.get('plot_color', None))
+                             color=ds.attrs.get('plot_color', None),
+                             show_legend=show_legend)
 
-def profile_altitude_multipletimes_obs(ds_list_lmdz,  obs_dict, var, times, ds_list_mesoNH=None, altmin=0, altmax=2000, xmin=None, xmax=None, substract_gl=True, simfreq='1h', title=None, altsite=0, xlabel=None, ylabel=None, quantiles=None, quantiles_color='orange', show_yticklabels=True, ds_linestyle=False ):
+def profile_altitude_multipletimes_obs(ds_list_lmdz,  obs_dict, var, times, ds_list_mesoNH=None, altmin=0, altmax=2000, xmin=None, xmax=None, substract_gl=True, simfreq='1h', title=None, altsite=0, xlabel=None, ylabel=None, quantiles=None, quantiles_color='orange', show_yticklabels=True, ds_linestyle=False, show_legend=True):
     n_ax = len(times)
     if show_yticklabels:
         fig, axs = plt.subplots(1, n_ax, figsize=(4*n_ax, 7))
@@ -588,7 +591,8 @@ def profile_altitude_multipletimes_obs(ds_list_lmdz,  obs_dict, var, times, ds_l
                              substract_gl=substract_gl,
                              xmin=xmin, 
                              xmax=xmax,
-                             altsite=altsite
+                             altsite=altsite,
+                             show_legend=show_legend
                              )
         
         # Filter datasets by the specified time and plot
@@ -607,7 +611,8 @@ def profile_altitude_multipletimes_obs(ds_list_lmdz,  obs_dict, var, times, ds_l
                                     xlabel=xlabel,
                                     ylabel=ylabel, #if i == 0 else 'test',  # Only set ylabel for the first plot
                                     show_yticklabels=show_yticklabels,
-                                    ds_linestyle=ds_linestyle
+                                    ds_linestyle=ds_linestyle,
+                                    show_legend=show_legend
                                     )
         
         if quantiles is not None:

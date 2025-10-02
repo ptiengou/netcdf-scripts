@@ -11,7 +11,7 @@ default_map_figsize = (8.5,4)
 # plt.rcParams['hatch.linewidth'] = 6
 # plt.bar(0,2,hatch='//' , edgecolor = None)
 
-def nice_map(plotvar, ax, cmap=myvir, vmin=None, vmax=None, poly=None, sig_mask=None, hatch='//', sig_viz=6, clabel=None, cbar_on=True, left_labels=True, n_ticks=6):
+def nice_map(plotvar, ax, cmap=myvir, vmin=None, vmax=None, poly=None, sig_mask=None, hatch='//', sig_viz=6, clabel=None, cbar_on=True, xloc=8, yloc=9, left_labels=True, n_ticks=6):
     ax.coastlines()
     # ax.add_feature(rivers)
     ax.add_feature(cfeature.RIVERS)
@@ -19,8 +19,8 @@ def nice_map(plotvar, ax, cmap=myvir, vmin=None, vmax=None, poly=None, sig_mask=
     gl.right_labels = False
     gl.left_labels = left_labels
     gl.top_labels = False
-    gl.xlocator = plt.MaxNLocator(8)
-    gl.ylocator = plt.MaxNLocator(9)
+    gl.xlocator = plt.MaxNLocator(xloc)
+    gl.ylocator = plt.MaxNLocator(yloc)
 
     if sig_mask is None:
         # Plot the main variable using xarray plot method
@@ -418,7 +418,7 @@ def map_rmse_ave(ds1, ds2, var, vmin=None, vmax=None, cmap=redsW, figsize=defaul
     map_plotvar(rmse, cmap=cmap, vmin=vmin, vmax=vmax, clabel=clabel, figsize=figsize)
 
 ## quiver plots for transport ##
-def map_wind(ds, ax=None, extra_var='wind speed', extra_ds=None, height='10m', vmin=None, vmax=None, figsize=default_map_figsize, cmap=reds, dist=6, scale=100, clabel=None):
+def map_wind(ds, ax=None, extra_var='wind speed', extra_ds=None, height='10m', vmin=None, vmax=None, figsize=default_map_figsize, cmap=reds, dist=6, scale=100, clabel=None, title=None, xloc=8, yloc=9, n_ticks=6):
     if ax==None:
         fig = plt.figure(figsize=figsize)
         ax = plt.axes(projection=ccrs.PlateCarree())
@@ -437,7 +437,7 @@ def map_wind(ds, ax=None, extra_var='wind speed', extra_ds=None, height='10m', v
         if 'time' in extra_ds.dims:
             extra_var = extra_ds[extra_var].mean(dim='time')
         plotvar = extra_ds[extra_var]
-    nice_map(plotvar, ax, cmap=cmap, vmin=vmin, vmax=vmax, clabel=clabel)
+    nice_map(plotvar, ax, cmap=cmap, vmin=vmin, vmax=vmax, clabel=clabel, xloc=xloc, yloc=yloc, n_ticks=n_ticks)
 
     #plot wind vectors
     windx = windvar_u[::dist,::dist]
@@ -447,12 +447,18 @@ def map_wind(ds, ax=None, extra_var='wind speed', extra_ds=None, height='10m', v
     quiver = ax.quiver(longi, lati, windx, windy, transform=ccrs.PlateCarree(), scale=scale)
 
     quiverkey_scale = scale/10
-    plt.quiverkey(quiver, X=0.93, Y=0.08, U=quiverkey_scale, label='{} m s⁻¹'.format(quiverkey_scale), labelpos='S')
-
-    if (height == '10m'):
-        plt.title('10m wind (m s⁻¹) and {}'.format(extra_var))
-    else :
-        plt.title('{} hPa wind (m s⁻¹) and {}'.format(height, extra_var))
+    # plt.quiverkey(quiver, X=0.93, Y=0.08, U=quiverkey_scale, label='{} m s⁻¹'.format(quiverkey_scale), labelpos='S')
+    plt.quiverkey(quiver, X=0.78, Y=0.085, U=quiverkey_scale,
+                   label='{} m s⁻¹'.format(quiverkey_scale), labelpos='S',
+                #    fontproperties={'weight': 'bold', 'size': 14},
+                   coordinates='figure')
+    if title:
+        plt.title(title)
+    else:
+        if (height == '10m'):
+            plt.title('10m wind (m s⁻¹) and {}'.format(extra_var))
+        else :
+            plt.title('{} hPa wind (m s⁻¹) and {}'.format(height, extra_var))
 
 def map_wind_diff(ds1, ds2, height='10m', figsize=default_map_figsize, vmin=None, vmax=None, cmap=emb, dist=6, scale=100, hex=False, hex_center=False):
     fig = plt.figure(figsize=figsize)

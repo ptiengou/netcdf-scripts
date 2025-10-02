@@ -130,6 +130,17 @@ def extract_pressure_surface(mesoNH_4D, mesoNH):
     
     return mesoNH
 
+def extract_w10m(mesoNH_4D, mesoNH):
+    # Extract the wind at 10m (level 3)
+    w10m = mesoNH_4D['vitw'].isel(level=3)
+    w10m.attrs['long_name'] = 'Wind at 10m'
+    w10m.attrs['units'] = 'm s⁻¹'
+
+    # Add the wind to the mesoNH dataset
+    mesoNH['w10m'] = w10m
+
+    return mesoNH
+
 def extract_wind_pressure(mesoNH_4D, mesoNH, pressure_level=850):
     # Extract wind at specified pressure level
     #find level closest to pressure_level
@@ -137,10 +148,13 @@ def extract_wind_pressure(mesoNH_4D, mesoNH, pressure_level=850):
     pres_idx = np.abs(pres_levels - pressure_level *100).argmin()
     u_name = f'u{pressure_level}'
     v_name = f'v{pressure_level}'
+    w_name = f'w{pressure_level}'
     u_level = mesoNH_4D['vitu'].isel(level=pres_idx)
     v_level = mesoNH_4D['vitv'].isel(level=pres_idx)
+    w_level = mesoNH_4D['vitw'].isel(level=pres_idx)
     mesoNH[u_name] = u_level
     mesoNH[v_name] = v_level
+    mesoNH[w_name] = w_level
     return mesoNH
 
 def flux_pt_to_mass_pt(ds, only_basic_vars=True, 
@@ -307,7 +321,7 @@ def map_mesoNH_timestamp_restrict(ds, var, vmin=None, vmax=None, cmap='viridis',
                          add_liaise=False,
                          timestamp='2021-07-14T01:00:00',
                          lon_min=None, lon_max=None, lat_min=None, lat_max=None,
-                         poly=None):
+                         poly=None, title=None, figsize=None, label=None):
     # Select data for the given timestamp
     data_to_plot_time_selected = ds[var].sel(time=timestamp, method='nearest')
 
@@ -329,11 +343,22 @@ def map_mesoNH_timestamp_restrict(ds, var, vmin=None, vmax=None, cmap='viridis',
     else:
         # If no subsetting is requested, use the time-selected data directly
         data_to_plot = data_to_plot_time_selected
-        
-    title = f'{var} on {pd.to_datetime(timestamp).strftime("%Y-%m-%d %H:%M UTC")}'
-    label = f'{var} ({ds[var].attrs.get("units", "")})'
+    
+    if not title:
+        title = f'{var} on {pd.to_datetime(timestamp).strftime("%Y-%m-%d %H:%M UTC")}'
+    else:
+        title = title  # use the provided title
+    if not label:
+        label = f'{var} ({ds[var].attrs.get("units", "")})'
+    else:
+        label = label  # use the provided label
 
-    nice_map_mesoNH(data_to_plot, vmin=vmin, vmax=vmax, cmap=cmap,
+    if figsize:
+        fig = plt.figure(figsize=figsize)
+        ax = plt.axes(projection=ccrs.PlateCarree())
+    else:
+        ax=None
+    nice_map_mesoNH(data_to_plot,ax=ax,  vmin=vmin, vmax=vmax, cmap=cmap,
                          add_liaise=add_liaise, title=title, label=label, poly=poly)
 
 def map_mesoNH_mean(ds, var, cmap='viridis', vmin=None, vmax=None, title=None, add_liaise=False, poly=None):
@@ -353,7 +378,10 @@ def map_mesoNH_mean_restrict(ds, var, cmap='viridis', vmin=None, vmax=None, titl
     """
     Maps the mean of a variable from a MesoNH dataset, with limitations on the spatial extent.
     """
-    data_to_plot_mean_selected = ds[var].mean(dim='time')
+    if 'time' not in ds[var].dims:
+        data_to_plot_mean_selected = ds[var]
+    else:
+        data_to_plot_mean_selected = ds[var].mean(dim='time')
 
     # Get the 2D lon/lat coordinates from the dataset (they have nj, ni dimensions)
     lons_coord = ds['lon']

@@ -75,6 +75,8 @@ def add_central_white_cmap(cmap, nbins=11):
     return cmapW
 
 emb = ListedColormap(mpl.colormaps['RdYlBu_r'](np.linspace(0, 1, 10)))
+emb8 = ListedColormap(mpl.colormaps['RdYlBu_r'](np.linspace(0, 1, 8)))
+
 emb_r = ListedColormap(mpl.colormaps['RdYlBu'](np.linspace(0, 1, 10)))
 emb2 = ListedColormap(mpl.colormaps['seismic'](np.linspace(0, 1, 10)))
 emb2_r = ListedColormap(mpl.colormaps['seismic_r'](np.linspace(0, 1, 10)))
@@ -82,6 +84,7 @@ emb3   = ListedColormap(mpl.colormaps['Spectral_r'](np.linspace(0, 1, 10)))
 emb3_r = ListedColormap(mpl.colormaps['Spectral'](np.linspace(0, 1, 10)))
 emb_neutral = ListedColormap(mpl.colormaps['BrBG'](np.linspace(0, 1, 10)))
 emb_neutralW = make_cmap_white('BrBG', nbins=11, n_white=5)
+wind_cmap = ListedColormap(mpl.colormaps['plasma'](np.linspace(0, 1, 8)))
 
 myvir = ListedColormap(mpl.colormaps['viridis'](np.linspace(0, 1, 10)))
 myvir8 = ListedColormap(mpl.colormaps['viridis'](np.linspace(0, 1, 8)))
@@ -936,7 +939,7 @@ def nice_sc(plotvar, ax, label=None, title=None, ylabel=None, xlabel=None, color
     ax.set_xticklabels(months_name_list)
     # ax.grid()
 
-def time_series_ave(ds_list, var, ds_colors=False, ds_linestyle=False, figsize=(7.5, 4), year_min=2010, year_max=2022, title=None, ylabel=None, xlabel=None, vmin=None, vmax=None, legend_out=False, envelope=False):
+def time_series_ave(ds_list, var, ds_colors=False, ds_linestyle=False, figsize=(7.5, 4), year_min=2010, year_max=2022, title=None, ylabel=None, xlabel=None, vmin=None, vmax=None, legend_out=False, envelope=False, single_day=False):
     fig = plt.figure(figsize=figsize)
     ax = plt.axes()
 
@@ -966,7 +969,7 @@ def time_series_ave(ds_list, var, ds_colors=False, ds_linestyle=False, figsize=(
 
         # Plot the mean time series
         nice_time_plot(plotvar, ax, label=ds.name, color=color, linestyle=linestyle, title=title,
-                       ylabel=ylabel, xlabel=xlabel, vmin=vmin, vmax=vmax, legend_out=legend_out)
+                       ylabel=ylabel, xlabel=xlabel, vmin=vmin, vmax=vmax, legend_out=legend_out, single_day=single_day)
 
         # Plot the envelope
         if envelope:

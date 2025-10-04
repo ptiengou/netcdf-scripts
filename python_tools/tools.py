@@ -2036,4 +2036,4 @@ def make_combined_figure9(df, ds, mask1, mask2, mask3, domain_labels=('Region A'
     # Adjust layout to center the map
     # plt.subplots_adjust(left=0.1, right=0.9, top=0.9, bottom=0.1)
     plt.tight_layout()
-    plt.show()
+    # plt.show()

@@ -24,6 +24,7 @@ import matplotlib.gridspec as gridspec
 from io import StringIO
 import psyplot.project as psy
 import os
+from tools_mapping import *
 
 plt.rcParams.update(
         {

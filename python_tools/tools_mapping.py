@@ -418,7 +418,7 @@ def map_rmse_ave(ds1, ds2, var, vmin=None, vmax=None, cmap=redsW, figsize=defaul
     map_plotvar(rmse, cmap=cmap, vmin=vmin, vmax=vmax, clabel=clabel, figsize=figsize)
 
 ## quiver plots for transport ##
-def map_wind(ds, ax=None, extra_var='wind speed', extra_ds=None, height='10m', vmin=None, vmax=None, figsize=default_map_figsize, cmap=reds, dist=6, scale=100, clabel=None, title=None, xloc=8, yloc=9, n_ticks=6):
+def map_wind(ds, ax=None, extra_var='wind speed', extra_ds=None, height='10m', vmin=None, vmax=None, figsize=default_map_figsize, cmap=reds, dist=6, scale=100, clabel=None, title=None, xloc=8, yloc=9, n_ticks=6, quiver_inside=False):
     if ax==None:
         fig = plt.figure(figsize=figsize)
         ax = plt.axes(projection=ccrs.PlateCarree())
@@ -447,8 +447,10 @@ def map_wind(ds, ax=None, extra_var='wind speed', extra_ds=None, height='10m', v
     quiver = ax.quiver(longi, lati, windx, windy, transform=ccrs.PlateCarree(), scale=scale)
 
     quiverkey_scale = scale/10
-    # plt.quiverkey(quiver, X=0.93, Y=0.08, U=quiverkey_scale, label='{} m s⁻¹'.format(quiverkey_scale), labelpos='S')
-    plt.quiverkey(quiver, X=0.78, Y=0.085, U=quiverkey_scale,
+    if quiver_inside:
+        plt.quiverkey(quiver, X=0.93, Y=0.08, U=quiverkey_scale, label='{} m s⁻¹'.format(quiverkey_scale), labelpos='S')
+    else:
+        plt.quiverkey(quiver, X=0.78, Y=0.085, U=quiverkey_scale,
                    label='{} m s⁻¹'.format(quiverkey_scale), labelpos='S',
                 #    fontproperties={'weight': 'bold', 'size': 14},
                    coordinates='figure')
@@ -606,6 +608,10 @@ def plot_subdomains_nice(ds, mask1, mask2, mask3, labels=('Region A', 'Region B'
 
     #define a discrete colormap with 3 fixed colors
     colors = ['#FDE725', 'orange', '#D73027'] 
+    colors = ["#FDE725", "#98df8a", "#1f77b4"]
+    colors = ["#FDE725",  # Yellow (bright, ~220 luminance)
+          "#44AA99",  # Teal (medium, ~120 luminance)
+          "#000080"]  # Blue (dark, ~50 luminance)
     cmap = mcolors.ListedColormap(colors)
     bounds = [0.5, 1.5, 2.5, 3.5]
     norm = mcolors.BoundaryNorm(bounds, cmap.N)

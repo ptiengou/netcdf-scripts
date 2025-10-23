@@ -108,8 +108,12 @@ def map_aridity_index(ds_lmdz, ds_orc, clabel=None, left_labels=True):
 
     #Calcul des indices d'aridité annuels
     precip = ds_lmdz['precip'].mean('time')
-    evapot = ds_orc['evapot_corr'].mean('time') 
+    # evapot = ds_orc['evapot_corr'].mean('time')
+    evapot = ds_orc['PET_PM'].mean('time')
     plotvar = (precip / evapot)
+    # precip = ds_lmdz['precip']
+    # evapot = ds_orc['evapot_corr']
+    # plotvar = (precip / evapot).mean(dim='time')
 
     bounds = [0, 0.05, 0.2, 0.5, 0.65, 1]
     colors = ['red', 'orange', 'yellow', 'lightskyblue', 'blue']

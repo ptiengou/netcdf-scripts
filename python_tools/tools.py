@@ -24,7 +24,6 @@ import matplotlib.gridspec as gridspec
 from io import StringIO
 import psyplot.project as psy
 import os
-from tools_mapping import *
 
 plt.rcParams.update(
         {
@@ -2016,6 +2015,7 @@ def plot_all_barplots(df, unit, axes):
         axes[i].tick_params(axis='x', rotation=45)
         axes[i].set_ylim(0,0.23)
 
+from tools_mapping import plot_subdomains_nice
 def make_combined_figure9(df, ds, mask1, mask2, mask3, domain_labels=('Region A', 'Region B', 'Region C')):
     """
     Makes a 2-row figure: 4 barplots in row 1, 1 map in row 2.
@@ -2035,5 +2035,5 @@ def make_combined_figure9(df, ds, mask1, mask2, mask3, domain_labels=('Region A'
 
     # Adjust layout to center the map
     # plt.subplots_adjust(left=0.1, right=0.9, top=0.9, bottom=0.1)
-    plt.tight_layout()
+    # plt.tight_layout()
     # plt.show()

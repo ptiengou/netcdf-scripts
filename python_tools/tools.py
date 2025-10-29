@@ -1025,9 +1025,10 @@ def seasonal_cycle_lonlat(ds_list, var, lon, lat, figsize=(7.5, 4), ds_colors=Fa
     ax.set_xticks(np.arange(1,13))
     ax.set_xticklabels(months_name_list)
 
-def time_series(plotvars, labels, colors=None, figsize=(7.5, 4), year_min=None, year_max=None, title=None, ylabel=None, xlabel=None, vmin=None, vmax=None):
-    fig = plt.figure(figsize=figsize)
-    ax = plt.axes()
+def time_series(plotvars, labels, ax=None, colors=None, figsize=(7.5, 4), year_min=None, year_max=None, title=None, ylabel=None, xlabel=None, vmin=None, vmax=None):
+    if ax==None:
+        fig = plt.figure(figsize=figsize)
+        ax = plt.axes()
     i=j=0
     for plotvar in plotvars:
         label=labels[j]
@@ -1043,9 +1044,10 @@ def time_series(plotvars, labels, colors=None, figsize=(7.5, 4), year_min=None, 
         else:
             nice_time_plot(plotvar,ax,label=label, title=title, ylabel=ylabel, xlabel=xlabel,  vmin=vmin, vmax=vmax)
 
-def seasonal_cycle(plotvars, labels, colors=None, figsize=(7.5, 4), year_min=2010, year_max=2022, title=None, ylabel=None, xlabel=None, vmin=None, vmax=None):
-    fig = plt.figure(figsize=figsize)
-    ax = plt.axes()
+def seasonal_cycle(plotvars, labels, ax=None, colors=None, figsize=(7.5, 4), year_min=2010, year_max=2022, title=None, ylabel=None, xlabel=None, vmin=None, vmax=None):
+    if ax==None:
+        fig = plt.figure(figsize=figsize)
+        ax = plt.axes()
     i=j=0
     for plotvar in plotvars:
         label=labels[j]
@@ -1062,7 +1064,7 @@ def seasonal_cycle(plotvars, labels, colors=None, figsize=(7.5, 4), year_min=201
             nice_time_plot(plotvar,ax,label=label, title=title, ylabel=ylabel, xlabel=xlabel, vmin=vmin, vmax=vmax)
     ax.set_xticks(np.arange(1,13))
     ax.set_xticklabels(months_name_list)
-    ax.grid()
+    # ax.grid()
 
 ###scatter plots###
 def scatter_vars(ds1, ds2, var1, var2, reg=False, plot_one=False, plot_m_one=False, title=None):
@@ -2037,3 +2039,15 @@ def make_combined_figure9(df, ds, mask1, mask2, mask3, domain_labels=('Region A'
     # plt.subplots_adjust(left=0.1, right=0.9, top=0.9, bottom=0.1)
     # plt.tight_layout()
     # plt.show()
+
+def normalize_sm(ds, var, date_min, date_max):
+    #check if norm_sm exist
+    if 'norm_sm' in ds.data_vars:
+        ds = ds.drop_vars(['norm_sm'])
+    #compute normalized SSM over the given period
+    ds_norm=ds.sel(time=slice(date_min,date_max))
+    sm_mean_ds    = ds_norm[var].mean(dim=['time','lon','lat']).values
+    sm_std_ds     = ds_norm[var].std(dim=['time','lon','lat']).values
+    ds['norm_sm'] = (ds_norm[var] - sm_mean_ds) / sm_std_ds
+    ds['norm_sm'].attrs['units'] = '-'
+    return ds

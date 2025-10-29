@@ -345,7 +345,7 @@ def sc_station(stations_ds, ax, station_id, name=None, var='runoff_mean', year_m
         title = name
     nice_time_plot(plotvar,ax,label='obs', title=title, ylabel=ylabel, xlabel=xlabel, color='black')
     
-def sc_with_obs(ds_list, stations_ds, ax, station_id, station_data, var='hydrographs', year_min=2010, year_max=2022, ylabel=None, xlabel=None, title_letter=None, polcher_ds=False, plot_all_sim=False, title=None):
+def sc_with_obs(ds_list, stations_ds, ax, station_id, station_data, var='hydrographs', year_min=2010, year_max=2022, ylabel=None, xlabel=None, title_letter=None, polcher_ds=False, plot_all_sim=False, title=None, title_number=True):
     ax.grid()
     ax.set_xticks(np.arange(1,13))
     ax.set_xticklabels(months_name_list)
@@ -370,9 +370,16 @@ def sc_with_obs(ds_list, stations_ds, ax, station_id, station_data, var='hydrogr
         river=station_data['river']
         if not title:
             if title_letter:
-                title= '({}) Station {} ({}, on river {})'.format(title_letter, nb, name, river)
+                if title_number:
+                    title= '({}) Station {} ({}, on river {})'.format(title_letter, nb, name, river)
+                else:
+                    title= '({}) Station {}, on river {}'.format(title_letter, name, river)
             else:
-                title= 'Station {} ({}, on river {})'.format(nb, name, river)
+                if title_number:
+                    title= 'Station {} ({}, on river {})'.format(nb, name, river)
+                else:
+                    title= 'Station {}, on river {})'.format( name, river)
+                    
         nice_time_plot(plotvar,ax,label=ds.name, title=title, color=ds.attrs['plot_color'], ylabel=ylabel, xlabel=xlabel)
 
 #metrics definition

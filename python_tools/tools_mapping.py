@@ -401,14 +401,16 @@ def map_two_ds(ds1, ds2, var, vmin=None, vmax=None, cmap=reds, figsize=(15,6), h
     if hex:
         plot_hexagon(axs[1], show_center=hex_center)
 
-def map_seasons(plotvar, vmin=None, vmax=None, cmap=myvir, figsize=(12,7), hex=False, hex_center=False, title=None):
+def map_seasons(plotvar, vmin=None, vmax=None, cmap=myvir, figsize=(12,7), hex=False, hex_center=False, title=None, clabel=None):
     fig, axs = plt.subplots(2, 2, figsize=figsize, subplot_kw={'projection': ccrs.PlateCarree()})
-    fig.suptitle(title)
+    if title is not None:
+        fig.suptitle(title)
     seasons = ['DJF', 'MAM', 'JJA', 'SON']
+    titles  = ['(a) DJF', '(b) MAM', '(c) JJA', '(d) SON']
     for i, season in enumerate(seasons):
         plotvar_season = plotvar.where(plotvar['time.season']==season, drop=True)
-        nice_map(plotvar_season.mean(dim='time'), axs.flatten()[i], cmap, vmin, vmax)
-        axs.flatten()[i].set_title(season)
+        nice_map(plotvar_season.mean(dim='time'), axs.flatten()[i], cmap, vmin, vmax, clabel=clabel)
+        axs.flatten()[i].set_title(titles[i])
         if hex:
             plot_hexagon(axs.flatten()[i], show_center=hex_center)
 

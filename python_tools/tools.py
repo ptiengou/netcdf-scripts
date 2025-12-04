@@ -24,6 +24,9 @@ import matplotlib.gridspec as gridspec
 from io import StringIO
 import psyplot.project as psy
 import os
+import matplotlib.ticker as mticker
+import geopandas as gpd
+
 
 plt.rcParams.update(
         {
@@ -57,7 +60,7 @@ plt.rcParams.update(
                 ]
             ) * cycler(alpha=[0.8]),
             'scatter.marker': 'x',
-            'lines.linewidth': 2.0,
+            'lines.linewidth': 3.0,
         })
 # rivers = cfeature.NaturalEarthFeature('physical', 'rivers_lake_centerlines', '10m',edgecolor=(0, 0, 0, 0.3), facecolor='none')
 letters=['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
@@ -887,6 +890,52 @@ def compute_mean(ds_list, var):
         print(ds.attrs['name'] + ' : %.5f' % mean_value + ' ({})'.format(ds[var].attrs['units']))
     return (mean_values)
 
+def calculate_correlation_matrix(ds, var1, vars_list):
+    """
+    Calculates the correlation matrix for a set of variables 
+    after taking the spatial mean and annual average.
+    
+    Args:
+        ds (xr.Dataset): The input xarray Dataset.
+        var1 (str): The primary variable (e.g., 'precip').
+        vars_list (list): List of secondary variables.
+        
+    Returns:
+        pd.DataFrame: A symmetrical correlation matrix.
+    """
+    
+    # 1. Combine all variables into one list
+    all_vars = [var1] + vars_list
+    
+    # 2. Process all variables into annual, spatially-averaged time series
+    annual_series = {}
+    print(f"Processing variables: {', '.join(all_vars)}")
+
+    for var in all_vars:
+        # Check if the variable exists in the dataset
+        if var not in ds.data_vars:
+            print(f"Warning: Variable '{var}' not found in the dataset. Skipping.")
+            continue
+            
+        # Spatial mean first, then annual mean
+        series = ds[var].mean(dim=['lon','lat']).resample(time='1YE').mean()
+        annual_series[var] = series
+        
+    # Check if we have any valid series
+    if not annual_series:
+        return pd.DataFrame()
+
+    # 3. Convert the dictionary of xarray DataArrays into a Pandas DataFrame
+    # This automatically aligns the data based on the 'time' index
+    df_annual = pd.DataFrame({
+        name: data.to_series() for name, data in annual_series.items()
+    })
+
+    # 4. Calculate the full pairwise correlation matrix
+    correlation_matrix = df_annual.corr()
+    
+    return correlation_matrix
+
 ### time plots ###
 months_name_list=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
 
@@ -915,6 +964,42 @@ def nice_time_plot(plotvar, ax, label=None, title=None, ylabel=None, xlabel=None
     if legend_out==True:
         ax.legend(bbox_to_anchor=(1.05, 1))
     elif legend_out==False:
+        ax.legend()
+
+def nice_bar_plot(plotvar, ax, label=None, title=None, ylabel=None, xlabel=None, color=None, vmin=None, vmax=None, xmin=None, xmax=None, legend_out=False, alpha=0.7):
+    # Extract years and values
+    years = plotvar.time.dt.year.values
+    values = plotvar.values
+
+    # Plot bars: x-axis is years, height is values
+    ax.bar(years, values, label=label, color=color, width=0.8, alpha=alpha)
+
+    # Set x-axis ticks to show all years
+    ax.set_xticks(years)
+    ax.set_xticklabels(years, rotation=45, ha='right')
+
+    # Set title
+    if title != 'off':
+        ax.set_title(title)
+    else:
+        ax.set_title('')
+
+    # Set labels
+    ax.set_ylabel(ylabel)
+    ax.set_xlabel(xlabel)
+
+    # Set y-axis limits
+    if vmin is not None and vmax is not None:
+        ax.set_ylim(vmin, vmax)
+
+    # Set x-axis limits
+    if xmin is not None and xmax is not None:
+        ax.set_xlim(xmin, xmax)
+
+    # Legend
+    if legend_out:
+        ax.legend(bbox_to_anchor=(1.05, 1))
+    elif legend_out is not None:
         ax.legend()
 
 def nice_sc(plotvar, ax, label=None, title=None, ylabel=None, xlabel=None, color=None, vmin=None, vmax=None, xmin=None, xmax=None, linestyle='-', legend_out=False):
@@ -987,22 +1072,87 @@ def time_series_lonlat(ds_list, var, lon, lat, figsize=(7.5, 4), year_min=2010, 
         plotvar=plotvar.sel(lon=lon, lat=lat, method='nearest')
         nice_time_plot(plotvar,ax,label=ds.name, title=title, ylabel=ylabel, xlabel=xlabel)
 
-def seasonal_cycle_ave(ds_list, var, figsize=(7.5, 4), ds_colors=False, year_min=2010, year_max=2022, title=None, ylabel=None, xlabel=None, vmin=None, vmax=None):
+def annual_bars_ave(ds_list, var, ax=None, ds_colors=False, ds_linestyle=False, figsize=(7.5, 4), year_min=2010, year_max=2022, title=None, ylabel=None, xlabel=None, vmin=None, vmax=None, legend_out=False, single_day=False, alpha=0.7):
+    if ax==None:
+        fig = plt.figure(figsize=figsize)
+        ax = plt.axes()
+
+    if not title:
+        title = f"{var} ({ds_list[0][var].attrs['units']})"
+
+    for ds in ds_list:
+        # Filter dataset by year range
+        restrict_ds = ds[var].where(ds['time.year'] >= year_min, drop=True).where(ds['time.year'] <= year_max, drop=True)
+
+        if 'lon' in restrict_ds.dims and 'lat' in restrict_ds.dims:
+            plotvar = restrict_ds.mean(dim=['lon', 'lat'])
+        elif 'ni' in restrict_ds.dims and 'nj' in restrict_ds.dims:
+            plotvar = restrict_ds.mean(dim=['ni', 'nj'])
+        else:
+            plotvar = restrict_ds
+        
+        #regroup data per year
+        plotvar = plotvar.resample(time='1Y').mean()
+
+        color = ds.attrs["plot_color"] if ds_colors else None
+        linestyle = ds.attrs["linestyle"] if ds_linestyle else '-'         
+
+
+        # Plot the mean time series
+        nice_bar_plot(plotvar, ax, label=ds.name, color=color, title=title,
+                       ylabel=ylabel, xlabel=xlabel, vmin=vmin, vmax=vmax, legend_out=legend_out, alpha=alpha)
+
+def annual_ts_ave(ds_list, var, ds_colors=False, ds_linestyle=False, figsize=(7.5, 4), year_min=2010, year_max=2022, title=None, ylabel=None, xlabel=None, vmin=None, vmax=None, legend_out=False, single_day=False):
     fig = plt.figure(figsize=figsize)
     ax = plt.axes()
+
+    if not title:
+        title = f"{var} ({ds_list[0][var].attrs['units']})"
+
+    for ds in ds_list:
+        # Filter dataset by year range
+        restrict_ds = ds[var].where(ds['time.year'] >= year_min, drop=True).where(ds['time.year'] <= year_max, drop=True)
+
+        if 'lon' in restrict_ds.dims and 'lat' in restrict_ds.dims:
+            plotvar = restrict_ds.mean(dim=['lon', 'lat'])
+        elif 'ni' in restrict_ds.dims and 'nj' in restrict_ds.dims:
+            plotvar = restrict_ds.mean(dim=['ni', 'nj'])
+        else:
+            plotvar = restrict_ds
+        
+        #regroup data per year
+        plotvar = plotvar.resample(time='1Y').mean()
+
+        color = ds.attrs["plot_color"] if ds_colors else None
+        linestyle = ds.attrs["linestyle"] if ds_linestyle else '-'         
+
+
+        # Plot the mean time series
+        nice_time_plot(plotvar, ax, label=ds.name, color=color, linestyle=linestyle, title=title,
+                       ylabel=ylabel, xlabel=xlabel, vmin=vmin, vmax=vmax, legend_out=legend_out, single_day=single_day)
+        
+def seasonal_cycle_ave(ds_list, var, ax=None, figsize=(7.5, 4), ds_colors=False, ds_linestyle=False, year_min=2010, year_max=2022, title=None, ylabel=None, xlabel=None, vmin=None, vmax=None):
+    if ax==None:
+        fig = plt.figure(figsize=figsize)
+        ax = plt.axes()
+    else:
+        ax=ax
     if not title:
         title = var + (' ({})'.format(ds_list[0][var].attrs['units']))
     for ds in ds_list:
         ds = ds.where(ds['time.year'] >= year_min, drop=True).where(ds['time.year'] <= year_max, drop=True)
         mean=ds[var].mean(dim=['lon','lat', 'time']).values
-        print(ds.attrs['name'] + ' : %.5f' % mean + ' ({})'.format(ds[var].attrs['units']))
+        print(ds.attrs['name'] + ' : %.2f' % mean + ' ({})'.format(ds[var].attrs['units']))
         plotvar=ds[var].mean(dim=['lon', 'lat']).groupby('time.month').mean(dim='time')
+        # label=ds.name
+        label = f'{ds.name} ({mean:.2f} {ds_list[0][var].attrs['units']})'
+        linestyle = ds.attrs["linestyle"] if ds_linestyle else '-'         
         if ds_colors:
             # nice_time_plot(plotvar,ax,label=ds.name, color=ds.attrs["plot_color"], title=title, ylabel=ylabel, xlabel=xlabel, vmin=vmin, vmax=vmax, add_grid=True)
-            nice_sc(plotvar,ax,label=ds.name, color=ds.attrs["plot_color"], title=title, ylabel=ylabel, xlabel=xlabel, vmin=vmin, vmax=vmax)
+            nice_sc(plotvar,ax,label=label, color=ds.attrs["plot_color"], title=title, ylabel=ylabel, xlabel=xlabel, vmin=vmin, vmax=vmax, linestyle=linestyle)
         else:
             # nice_time_plot(plotvar,ax,label=ds.name, title=title, ylabel=ylabel, xlabel=xlabel, vmin=vmin, vmax=vmax, add_grid=True)
-            nice_sc(plotvar,ax,label=ds.name, title=title, ylabel=ylabel, xlabel=xlabel, vmin=vmin, vmax=vmax)
+            nice_sc(plotvar,ax,label=label, title=title, ylabel=ylabel, xlabel=xlabel, vmin=vmin, vmax=vmax, linestyle=linestyle)
 
 def seasonal_cycle_lonlat(ds_list, var, lon, lat, figsize=(7.5, 4), ds_colors=False, year_min=2010, year_max=2022, title=None, ylabel=None, xlabel=None):
     fig = plt.figure(figsize=figsize)
@@ -1397,15 +1547,15 @@ def scatter_vars_seasons(ds1, ds2, var1, var2, reg=False, plot_one=False, plot_m
 
         # Assign fixed colors for all seasons
         season_colors = {
-            # 'DJF': "blue",  # Winter
-            # 'MAM': "green",  # Spring
-            # 'JJA': "red",    # Summer
-            # 'SON': "orange"  # Autumn
+            'DJF': "blue",  # Winter
+            'MAM': "green",  # Spring
+            'JJA': "red",    # Summer
+            'SON': "orange"  # Autumn
             #colorblind-friendly colors
-            'DJF': "#0072B2",  # Winter
-            'MAM': "#009E73",  # Spring
-            'JJA': "#D55E00",  # Summer
-            'SON': "#CC79A7"   # Autumn
+            # 'DJF': "#0072B2",  # Winter
+            # 'MAM': "#009E73",  # Spring
+            # 'JJA': "#D55E00",  # Summer
+            # 'SON': "#CC79A7"   # Autumn
         }
 
         for season in seasons_to_plot:
@@ -1490,15 +1640,15 @@ def scatter_vars_seasons_ax(ax, ds1, ds2, var1, var2, reg=False, plot_one=False,
 
         # Assign fixed colors for all seasons
         season_colors = {
-            # 'DJF': "blue",  # Winter
-            # 'MAM': "green",  # Spring
-            # 'JJA': "red",    # Summer
-            # 'SON': "orange"  # Autumn
+            'DJF': "blue",  # Winter
+            'MAM': "green",  # Spring
+            'JJA': "red",    # Summer
+            'SON': "orange"  # Autumn
             #colorblind-friendly colors
-            'DJF': "#0072B2",  # Winter
-            'MAM': "#009E73",  # Spring
-            'JJA': "#D55E00",  # Summer
-            'SON': "#CC79A7"   # Autumn
+            # 'DJF': "#0072B2",  # Winter
+            # 'MAM': "#009E73",  # Spring
+            # 'JJA': "#D55E00",  # Summer
+            # 'SON': "#CC79A7"   # Autumn
         }
 
         for season in seasons_to_plot:

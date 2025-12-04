@@ -561,8 +561,8 @@ def bins_timestamp(ds, var, timestamp, nbins=10,
 
     # Plot histogram
     plt.figure(figsize=(7.5, 4.5))
-    plt.bar(edges[:-1], hist, width=np.diff(edges), edgecolor='black', align='edge',
-            color='orange', alpha=0.3)
+    plt.bar(edges[:-1], hist, width=np.diff(edges), edgecolor='orange', align='edge',
+            color='orange', alpha=0.4)
 
     if ylim is not None:
         plt.ylim(ylim)
@@ -593,7 +593,8 @@ def bins_timestamp(ds, var, timestamp, nbins=10,
 
     # Show the mean
     ds_mean = ds[var].mean(dim=['ni', 'nj']).values
-    plt.scatter(ds_mean, 2, color=ds.attrs['plot_color'])
+    plt.scatter(ds_mean, 1, color=ds.attrs['plot_color'], marker='o')
+
 
     if ds_list is not None:
         for ds1 in ds_list:
@@ -602,7 +603,7 @@ def bins_timestamp(ds, var, timestamp, nbins=10,
             else:
                 ds1_val = ds1.sel(time=timestamp, method='nearest')[var].values
                 color = ds1.attrs['plot_color']
-                plt.scatter(ds1_val, 2, color=color)
+                plt.scatter(ds1_val, 1, color=color, marker='o')
             
 def bins_hour(ds, var, hour, nbins=10,
                    xmin=None, xmax=None, title=None, xlabel=None):

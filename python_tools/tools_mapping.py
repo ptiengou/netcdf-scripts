@@ -14,7 +14,14 @@ default_map_figsize = (8.5,4)
 def nice_map(plotvar, ax, cmap=myvir, vmin=None, vmax=None, poly=None, sig_mask=None, hatch='//', sig_viz=6, clabel=None, cbar_on=True, xloc=8, yloc=9, left_labels=True, n_ticks=6):
     ax.coastlines()
     # ax.add_feature(rivers)
-    ax.add_feature(cfeature.RIVERS)
+    ax.add_feature(
+        cfeature.RIVERS,
+        # Définition de la couleur et de l'épaisseur
+        color='darkblue',    # Couleur : bleu foncé
+        linewidth=1.0,       # Épaisseur de ligne : 2.0
+        zorder=3             # S'assurer que les rivières sont au-dessus d'autres fonds (facultatif)
+    )        
+    # ax.add_feature(cfeature.RIVERS)    
     gl = ax.gridlines(draw_labels=True, dms=False, x_inline=False, y_inline=False, alpha=0.8)
     gl.right_labels = False
     gl.left_labels = left_labels
@@ -185,9 +192,12 @@ def map_plotvar(plotvar, vmin=None, vmax=None, cmap=myvir, clabel=None, figsize=
     elif title:
         plt.title(title)
 
-def map_ave(ds, var, vmin=None, vmax=None, cmap=myvir, multiplier=1, figsize=default_map_figsize, clabel=None, hex=False, hex_center=False, title=None, poly=None, add_liaise=False):
-    fig = plt.figure(figsize=figsize)
-    ax = plt.axes(projection=ccrs.PlateCarree())
+def map_ave(ds, var, ax=None, vmin=None, vmax=None, cmap=myvir, multiplier=1, figsize=default_map_figsize, clabel=None, hex=False, hex_center=False, title=None, poly=None, add_liaise=False):
+    if not ax:
+        fig = plt.figure(figsize=figsize)
+        ax = plt.axes(projection=ccrs.PlateCarree())
+    else:
+        ax=ax
     #check if time dimension exists
     if 'time' in ds[var].dims:
         plotvar = ds[var].mean(dim='time') * multiplier
@@ -197,9 +207,9 @@ def map_ave(ds, var, vmin=None, vmax=None, cmap=myvir, multiplier=1, figsize=def
     if hex:
         plot_hexagon(ax, show_center=hex_center)
     if title=="off":
-        plt.title("")
+        ax.set_title("")
     elif title:
-        plt.title(title)
+        ax.set_title(title)
     else:
         # plt.title(var + ' (' + ds[var].attrs['units'] + ')')
         #check if var has attribute long_name 
@@ -210,10 +220,13 @@ def map_ave(ds, var, vmin=None, vmax=None, cmap=myvir, multiplier=1, figsize=def
     if add_liaise:
         plot_liaise_site_loc(ax)
 
-def map_diff_ave(ds1, ds2, var, vmin=None, vmax=None, cmap=emb, figsize=default_map_figsize, title=None, clabel=None, hex=False, hex_center=False,
+def map_diff_ave(ds1, ds2, var, ax=None, vmin=None, vmax=None, cmap=emb, figsize=default_map_figsize, title=None, clabel=None, hex=False, hex_center=False,
                  sig=False, sig_method=0 , pvalue=0.05, hatch='//', sig_viz=6, check_norm=False, n_ticks=6):
-    fig = plt.figure(figsize=figsize)
-    ax = plt.axes(projection=ccrs.PlateCarree())
+    if ax==None:
+        fig = plt.figure(figsize=figsize)
+        ax = plt.axes(projection=ccrs.PlateCarree())
+    else:
+        ax=ax
     if 'time' in ds1[var].dims:
         diff = (ds1[var].mean(dim='time') - ds2[var].mean(dim='time'))
     else:
@@ -231,11 +244,11 @@ def map_diff_ave(ds1, ds2, var, vmin=None, vmax=None, cmap=emb, figsize=default_
         plot_hexagon(ax, show_center=hex_center)
 
     if title=="off":
-        plt.title("")
+        ax.set_title("")
     elif title:
-        plt.title(title)
+        ax.set_title(title)
     else:
-        plt.title(var + ' difference (' + ds1.name + ' - ' + ds2.name + ', ' + ds1[var].attrs['units'] + ')')
+        ax.set_title(var + ' difference (' + ds1.name + ' - ' + ds2.name + ', ' + ds1[var].attrs['units'] + ')')
 
 def compute_sig_mask(ds1, ds2, var, check_norm, method, pvalue):
     diff=ds1[var]-ds2[var]
@@ -640,4 +653,4 @@ def plot_subdomains_nice(ds, mask1, mask2, mask3, labels=('Region A', 'Region B'
     #add legend with patches
     legend_patches = [mpatches.Patch(color=colors[i], label=labels[i]) for i in range(3)]
     ax.legend(handles=legend_patches, loc='lower left', bbox_to_anchor=(1.05, 0), title='Subdomains')
-    ax.set_title('(e) Irrigation subdomains')
+    ax.set_title('Irrigation subdomains')

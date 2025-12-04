@@ -120,10 +120,15 @@ def diurnal_cycle_ax(ax, title=None, ylabel=None, xlabel=None, vmin=None, vmax=N
         ax.legend()
 
 #for one var, several datasets, averaged over lon and lat
-def diurnal_cycle_ave(ds_list, var, figsize=(6, 6), ds_colors=False, title=None, ylabel=None, xlabel=None, vmin=None, vmax=None, legend_out=False, ds_linestyle=False, envelope=False):
-    fig, ax = plt.subplots(figsize=figsize)
+def diurnal_cycle_ave(ds_list, var, ax=None, figsize=(6, 6), ds_colors=False, title=None, ylabel=None, xlabel=None, vmin=None, vmax=None, legend_out=False, ds_linestyle=False, envelope=False):
+    if ax == None:
+        fig, ax = plt.subplots(figsize=figsize)
+    else:
+        ax=ax
+
     if not title:
         title = var + (' ({})'.format(ds_list[0][var].attrs['units']))
+        
     for ds in ds_list:        
         # Check if 'lon' and 'lat' are dimensions in the dataset
         if 'lon' in ds.dims and 'lat' in ds.dims:
@@ -530,7 +535,7 @@ def profile_altitude_multipletimes_mean_singleplot(ds, var, times, altmin=0, alt
 
     plt.tight_layout()
 
-def profile_altitude_obs(ds_list, var, figsize=(6,8), ax=None, title=None, altmin=-0, altmax=2000, substract_gl=True, nbins=None, xmin=None, xmax=None, altsite=0, show_legend=True):
+def profile_altitude_obs(ds_list, var, figsize=(6,8), ax=None, title=None, altmin=-0, altmax=2000, substract_gl=True, nbins=None, xmin=None, xmax=None, xlabel=None, ylabel=None, altsite=0, show_legend=True, show_yticklabels=True,):
     # print('Entering profile altitude obs')
     if ax is None:
         fig, ax = plt.subplots(figsize=figsize)
@@ -549,14 +554,25 @@ def profile_altitude_obs(ds_list, var, figsize=(6,8), ax=None, title=None, altmi
             plot_label = ds.name
         else:
             plot_label = None
-        if 'units' in ds[var].attrs:
-            xlabel = f"{var} ({ds[var].attrs['units']})"
+
+        #xlabel
+        if xlabel is None:
+            if 'units' in ds[var].attrs:
+                xlabel = f"{var} ({ds[var].attrs['units']})"
+            else:
+                xlabel = var
+        #ylabel
+        if ylabel is None:
+            ylabel = ('Height agl (m)' if substract_gl else 'Altitude (m)')
+        elif ylabel is False:
+            ylabel = None
         else:
-            xlabel = var
+            ylabel = ylabel
         
         profile_altitudes_ax(ax, x_var, y_coord, nbins=nbins, plot_label=plot_label, title=title,
                              xlabel=xlabel, 
-                             ylabel=None,
+                             ylabel=ylabel,
+                             show_yticklabels=show_yticklabels,
                              xmin=xmin, xmax=xmax, ymin=altmin, ymax=altmax,
                              linestyle=ds.attrs.get('linestyle', None),
                              color=ds.attrs.get('plot_color', None),
@@ -591,6 +607,9 @@ def profile_altitude_multipletimes_obs(ds_list_lmdz,  obs_dict, var, times, ds_l
                              substract_gl=substract_gl,
                              xmin=xmin, 
                              xmax=xmax,
+                            xlabel=xlabel,
+                            ylabel=ylabel,
+                            show_yticklabels=show_yticklabels,
                              altsite=altsite,
                              show_legend=show_legend
                              )

@@ -73,7 +73,9 @@ def stations_map_xy(x_values, y_values, title='Location of selected stations'):
     plt.scatter(x_values, y_values, s=30, marker='o')
     plt.title(title)
 
-def stations_map_dict(stations_dict, river_cond=None, name_cond=None, title='Location of selected stations', legend=True, extent=[-10, 2.5, 35, 45], dams_df=None, dam_nb=50):
+def stations_map_dict(stations_dict, river_cond=None, name_cond=None, title='Location of selected stations', legend=True, extent=[-10, 2.5, 35, 45], 
+                      dams_df=None, dam_nb=50, 
+                      catchment_df=None):
     """
     Plots the stations from a dictionary on a map, filtering by river or name if specified.
     Automatically assigns unique colors to each station based on the number of stations plotted.
@@ -99,12 +101,17 @@ def stations_map_dict(stations_dict, river_cond=None, name_cond=None, title='Loc
     colors = [cmap(i) for i in np.linspace(0, 1, num_stations)]
 
     # Setup map
-    fig = plt.figure(figsize=(10, 10))
+    if legend:
+        fig=plt.figure(figsize=(12,10))
+    else:
+        fig = plt.figure(figsize=(10, 10))
     ax = plt.axes(projection=ccrs.PlateCarree())
-    ax.coastlines()
-    ax.add_feature(cfeature.RIVERS)
+    ax.coastlines(zorder=4)
+    ax.add_feature(cfeature.RIVERS, color='darkblue', linewidth=3, zorder=5)
     ax.add_feature(cfeature.LAND, color='lightyellow', edgecolor='black')
-    ax.grid()
+    ax.add_feature(cfeature.OCEAN, facecolor='#cceeff', zorder=4)
+
+    # ax.grid()
     ax.set_extent(extent)
 
     # Overlay river names as labels
@@ -127,10 +134,12 @@ def stations_map_dict(stations_dict, river_cond=None, name_cond=None, title='Loc
             river["lon"], river["lat"], river["name"],
             fontsize=14, 
             # color=(180/255, 200/255, 250/255, 1),
-            color='steelblue',
-            weight="normal",
+            # color='steelblue',
+            color='darkblue',
+            weight="bold",
             transform=ccrs.PlateCarree(),
             ha="center", va="center",
+            zorder=5
         )
     
     if dams_df is not None:
@@ -142,15 +151,23 @@ def stations_map_dict(stations_dict, river_cond=None, name_cond=None, title='Loc
             label=name
             plt.scatter(
                 row.lon, row.lat,
-                s=50, marker='D', color='silver'
+                s=50, marker='D', color='silver',
+                zorder=2
             )
 
-    # Gridlines
-    # gl = ax.gridlines(draw_labels=True, dms=True, x_inline=False, y_inline=False)
-    # gl.ylocator = plt.MaxNLocator(5)
-    # gl.right_labels = False
-    # gl.top_labels = False
-
+    if catchment_df is not None:
+        catchment_df.plot(
+            ax=ax,
+            transform=ccrs.PlateCarree(), # Data is in PlateCarree
+            # edgecolor='#339966',          # A distinct green colour
+            edgecolor = 'grey',
+            facecolor='none',             # Do not fill the polygons
+            linewidth=1,
+            alpha=0.9,
+            zorder=3,
+            legend=False
+        )
+    
     # Plot each station with its unique color
     for idx, (key, value) in enumerate(filtered_stations.items()):
         name=value['name']
@@ -158,14 +175,29 @@ def stations_map_dict(stations_dict, river_cond=None, name_cond=None, title='Loc
         label='{} ({})'.format(number, name)
         plt.scatter(
             value['lon_grid'], value['lat_grid'],
-            s=100, label=label, marker='o', color=colors[idx]
+            s=150, label=label, marker='o', color=colors[idx],
+            zorder=7
         )
         # Add text next to the point
         plt.text(
-            value['lon_grid'] + 0.11, value['lat_grid'] - 0.15,  # Adjust the offset for better placement
-            str(number), fontsize=15, color='black'
+            value['lon_grid'] + 0.1, value['lat_grid'] +0.1,  # Adjust the offset for better placement
+            str(number), fontsize=16, color='black',
+            weight='bold',
+            zorder=7
         )
-
+    
+    
+    # Gridlines
+    gl = ax.gridlines(
+        draw_labels=True, 
+        dms=True, 
+        x_inline=False, 
+        y_inline=False, 
+        draw_frame=True # Ensure the frame line is active
+    )
+    gl.xlines = gl.ylines = False  # Keep internal lines hidden
+    gl.right_labels = gl.top_labels = False
+    ax.spines['geo'].set_zorder(10) # Set the GeoAxes boundary (the full box) z-order to 10
 
     # Add title and legend
     if title:
@@ -330,7 +362,7 @@ def ts_with_obs(ds_list, stations_ds, ax, station_id, station_data, var='hydrogr
             title= 'Station {} ({}, on river {})'.format(nb, name, river)
         nice_time_plot(plotvar,ax,label=ds.name, title=title, color=ds.attrs['plot_color'], ylabel=ylabel, xlabel=xlabel)
 
-def sc_station(stations_ds, ax, station_id, name=None, var='runoff_mean', year_min=2010, year_max=2022, ylabel=None, xlabel=None, polcher_ds=False, title=None):
+def sc_station(stations_ds, ax, station_id, station_data=None, name=None, var='runoff_mean', year_min=2010, year_max=2022, ylabel=None, xlabel=None, polcher_ds=False, title=None, show_mean=False, vmin=None, vmax=None):
     ax.grid()
     ax.set_xticks(np.arange(1,13))
     ax.set_xticklabels(months_name_list)
@@ -343,9 +375,18 @@ def sc_station(stations_ds, ax, station_id, name=None, var='runoff_mean', year_m
     plotvar=plotvar.groupby('time.month').mean(dim='time')
     if not title:
         title = name
-    nice_time_plot(plotvar,ax,label='obs', title=title, ylabel=ylabel, xlabel=xlabel, color='black')
+        if station_data is not None:
+            nb=station_data['station_nb']
+            river=station_data['river']
+            title= 'Station {} ({}, on river {})'.format(nb, name, river)
+    if show_mean:
+        mean = plotvar.mean().values
+        label= f'obs ({mean:.1f} m s⁻³)'
+    else:
+        label='obs'
+    nice_time_plot(plotvar,ax,label=label, title=title, ylabel=ylabel, xlabel=xlabel, color='black', vmin=vmin, vmax=vmax)
     
-def sc_with_obs(ds_list, stations_ds, ax, station_id, station_data, var='hydrographs', year_min=2010, year_max=2022, ylabel=None, xlabel=None, title_letter=None, polcher_ds=False, plot_all_sim=False, title=None, title_number=True):
+def sc_with_obs(ds_list, stations_ds, ax, station_id, station_data, var='hydrographs', year_min=2010, year_max=2022, ylabel=None, xlabel=None, title_letter=None, polcher_ds=False, plot_all_sim=False, title=None, title_number=True, show_mean=False, vmin=None, vmax=None):
     ax.grid()
     ax.set_xticks(np.arange(1,13))
     ax.set_xticklabels(months_name_list)
@@ -377,10 +418,17 @@ def sc_with_obs(ds_list, stations_ds, ax, station_id, station_data, var='hydrogr
             else:
                 if title_number:
                     title= 'Station {} ({}, on river {})'.format(nb, name, river)
+                    title= 'Station {}'.format(nb)
                 else:
                     title= 'Station {}, on river {})'.format( name, river)
-                    
-        nice_time_plot(plotvar,ax,label=ds.name, title=title, color=ds.attrs['plot_color'], ylabel=ylabel, xlabel=xlabel)
+                    title= 'Station {}'.format(nb)
+
+        if show_mean:
+            mean = plotvar.mean().values
+            label= f'{ds.name} ({mean:.1f} m s⁻³)'
+        else:
+            label=ds.name
+        nice_time_plot(plotvar,ax,label=label, title=title, color=ds.attrs['plot_color'], ylabel=ylabel, xlabel=xlabel, vmin=vmin, vmax=vmax)
 
 #metrics definition
 def metric_sim_module(sim: xr.DataArray, obs: xr.DataArray) -> float:
